@@ -1,80 +1,69 @@
 import re
 import math
+import json
+import os
 import pandas as pd
 import numpy as np
+from typing import Dict, List, Optional, Union, Any, Tuple
 from .material_database import db as material_db
 
-# Basic Element Properties Database (Simplified for demonstration)
-# Data source key: 
-# 'r': Atomic Radius (Angstrom) - standard empircal
-# 'vec': Valence Electron Concentration
-# 'mass': Atomic mass
-# Basic Element Properties Database
-# 'r': Atomic Radius (Angstrom) - standard empircal
-# 'vec': Valence Electron Concentration
-# 'mass': Atomic mass (amu)
-# 'rho': Density (g/cm^3) at RT
-# ELEMENT_DATA = {
-#     'Al': {'r': 1.43, 'vec': 3, 'mass': 26.98, 'rho': 2.70},
-#     'Co': {'r': 1.25, 'vec': 9, 'mass': 58.93, 'rho': 8.90},
-#     'Cr': {'r': 1.28, 'vec': 6, 'mass': 51.99, 'rho': 7.19},
-#     'Cu': {'r': 1.28, 'vec': 11, 'mass': 63.55, 'rho': 8.96},
-#     'Fe': {'r': 1.26, 'vec': 8, 'mass': 55.85, 'rho': 7.87},
-#     'Mn': {'r': 1.27, 'vec': 7, 'mass': 54.94, 'rho': 7.21},
-#     'Ni': {'r': 1.24, 'vec': 10, 'mass': 58.69, 'rho': 8.90},
-#     'Ti': {'r': 1.47, 'vec': 4, 'mass': 47.87, 'rho': 4.50},
-#     'V':  {'r': 1.34, 'vec': 5, 'mass': 50.94, 'rho': 6.11},
-#     'Zr': {'r': 1.60, 'vec': 4, 'mass': 91.22, 'rho': 6.52},
-#     'Nb': {'r': 1.46, 'vec': 5, 'mass': 92.91, 'rho': 8.57},
-#     'Mo': {'r': 1.39, 'vec': 6, 'mass': 95.95, 'rho': 10.28},
-#     'Hf': {'r': 1.59, 'vec': 4, 'mass': 178.49, 'rho': 13.31},
-#     'Ta': {'r': 1.46, 'vec': 5, 'mass': 180.95, 'rho': 16.69},
-#     'W':  {'r': 1.39, 'vec': 6, 'mass': 183.84, 'rho': 19.25},
-#     'C':  {'r': 0.77, 'vec': 4, 'mass': 12.01, 'rho': 2.26}, 
-#     'N':  {'r': 0.75, 'vec': 5, 'mass': 14.01, 'rho': 0.00125}, # Gas usually, but interstitial in lattice
-#     'Si': {'r': 1.18, 'vec': 4, 'mass': 28.09, 'rho': 2.33},
-#     'B':  {'r': 0.90, 'vec': 3, 'mass': 10.81, 'rho': 2.34},
-# }
-
-# Simplified approx Mixing Enthalpy (kJ/mol) for selected binary pairs (i, j)
-# Based on Miedema model values found in literature (Takeuchi & Inoue etc)
-# Key: frozenset({el1, el2}) -> value
-# This is a small subset for demonstration.
-# BINARY_ENTHALPY = { ... } (managed by enthalpy.json now)
-
-# Standard Properties for WC (Alpha) - Target Ceramic
-P_WC = {
-    'a': 2.906, # Angstrom (Hexagonal a-axis matches FCC (111) or BCC (110) in epitaxy)
-    'G': 283.0, # GPa (Shear Modulus)
-    'Tm': 3143.0, # Kelvin (Melting Point, approx)
-    'alpha': 5.2 # CTE (um/m/K)
-}
-
 class MaterialProcessor:
+    """
+    Handles material property calculations for HEA and Cermet systems.
+    
+    Attributes:
+        db: Reference to the shared material database instance.
+        element_data: Dictionary of base element properties (radius, VEC, mass, etc.).
+        wc_props: Dictionary of standard properties for Tungsten Carbide (WC).
+    """
+    
     def __init__(self):
-        # Use the shared database instance
+        """Initializes the MaterialProcessor and loads reference data."""
         self.db = material_db
+        self.element_data: Dict[str, Dict[str, float]] = {}
+        self.wc_props: Dict[str, float] = {}
+        self._load_reference_data()
 
-    def parse_formula(self, formula_str):
+    def _load_reference_data(self) -> None:
+        """Loads element and WC properties from JSON configuration file."""
+        data_path = os.path.join(os.path.dirname(__file__), 'data', 'materials.json')
+        try:
+            with open(data_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                self.element_data = data.get('ELEMENT_DATA', {})
+                self.wc_props = data.get('P_WC', {})
+        except FileNotFoundError:
+            # Fallback for critical WC props if file missing (though file should exist)
+            print(f"Warning: {data_path} not found. Using defaults.")
+            self.wc_props = {
+                'a': 2.906, 
+                'G': 283.0, 
+                'Tm': 3143.0, 
+                'alpha': 5.2 
+            }
+
+    def parse_formula(self, formula_str: str) -> Optional[Dict[str, float]]:
         """
-        Parses a chemical formula string into a dictionary of {Element: MoleFraction}.
-        Supports formats like "AlCoCrFeNi", "Al10Co20...", "Al1.5Co...".
+        Parses a chemical formula string into a normalized composition dictionary.
+        
+        Args:
+            formula_str: String like "AlCoCrFeNi" or "Al10Co20".
+            
+        Returns:
+            Dictionary {Element: MoleFraction} or None if invalid.
         """
+        if not isinstance(formula_str, str):
+            return None
+            
         formula_str = formula_str.strip()
-        # Regex to match Element name and optional amount
-        # matches: ('Al', '1.5'), ('Co', ''), ...
         matches = re.findall(r'([A-Z][a-z]*)(\d*\.?\d*)', formula_str)
         
         composition = {}
         total_moles = 0.0
         
-        valid_elements = True
-        
         for el, amt in matches:
-            if not self.db.get_element(el):
-                # Fallback or strict error? For now, ignore or mark unknown
-                # Ideally, we should maybe error out, but let's just skip for robustness in demo
-                valid_elements = False
+            # Validate element existence in DB or local map
+            if not self.db.get_element(el) and el not in self.element_data:
                 continue
                 
             amount = float(amt) if amt else 1.0
@@ -84,65 +73,55 @@ class MaterialProcessor:
         if total_moles == 0:
             return None
         
-        # Normalize to fractions
-        normalized_comp = {k: v / total_moles for k, v in composition.items()}
-        return normalized_comp
+        return {k: v / total_moles for k, v in composition.items()}
 
-    def calculate_properties(self, composition):
+    def calculate_properties(self, composition: Dict[str, float]) -> Dict[str, float]:
         """
-        Calculates basic HEA properties:
-        - Mixing Entropy (S_mix) [R]
-        - Valence Electron Concentration (VEC)
-        - Atomic Size Difference (delta) [%]
+        Calculates basic HEA properties: S_mix, VEC, and Atomic Size Difference.
+        
+        Args:
+            composition: Dictionary of {Element: MoleFraction}.
+            
+        Returns:
+            Dictionary of calculated properties.
         """
         if not composition:
-            return None
+            return {}
             
         # 1. Mixing Entropy: S_mix = -R * sum(c_i * ln(c_i))
-        # We will return it in units of R (gas constant), so calculation is just -sum(...)
         s_mix_R = -sum(c * math.log(c) for c in composition.values() if c > 0)
         
-        # 2. VEC: sum(c_i * (VEC)_i)
+        # 2. VEC & Atomic Size
         vec_vals = []
-        for el in composition:
-            vec = self.db.get_property(el, 'vec')
-            if vec is not None:
-                vec_vals.append(composition[el] * vec)
-            else:
-                # Handle missing property if needed, for now assume 0 or skip
-                pass
-
-        if vec_vals:
-            vec_avg = sum(vec_vals)
-        else:
-            vec_avg = 0.0
-        
-        # 3. Atomic Size Difference (delta)
-        # r_bar = sum(c_i * r_i)
-        # delta = sqrt(sum(c_i * (1 - r_i/r_bar)^2)) * 100
         r_vals = []
         fracs = []
         
         for el, frac in composition.items():
+            # Try DB first, then local fallback
+            vec = self.db.get_property(el, 'vec')
+            if vec is None and el in self.element_data:
+                vec = self.element_data[el].get('vec')
+                
             r = self.db.get_property(el, 'r')
+            if r is None and el in self.element_data:
+                r = self.element_data[el].get('r')
+                
+            if vec is not None:
+                vec_vals.append(frac * vec)
+            
             if r is not None:
-                r_vals.append(r)
-                fracs.append(frac)
-        
-        if not r_vals:
-            return {
-                'S_mix (R)': round(s_mix_R, 4),
-                'VEC': round(vec_avg, 4),
-                'Delta (%)': 0.0
-            }
+                 r_vals.append(r)
+                 fracs.append(frac)
 
-        r_bar = sum(c * r for c, r in zip(fracs, r_vals))
+        vec_avg = sum(vec_vals) if vec_vals else 0.0
         
-        if r_bar == 0:
-             delta = 0.0
-        else:
-            sq_diffs = [c * ((1 - r / r_bar) ** 2) for c, r in zip(fracs, r_vals)]
-            delta = math.sqrt(sum(sq_diffs)) * 100
+        # 3. Delta
+        delta = 0.0
+        if r_vals:
+            r_bar = sum(c * r for c, r in zip(fracs, r_vals))
+            if r_bar > 0:
+                sq_diffs = [c * ((1 - r / r_bar) ** 2) for c, r in zip(fracs, r_vals)]
+                delta = math.sqrt(sum(sq_diffs)) * 100
         
         return {
             'S_mix (R)': round(s_mix_R, 4),
@@ -150,7 +129,16 @@ class MaterialProcessor:
             'Delta (%)': round(delta, 4)
         }
 
-    def calculate_enthalpy(self, composition):
+    def calculate_enthalpy(self, composition: Dict[str, float]) -> float:
+        """
+        Calculates mixing enthalpy based on binary pairs.
+        
+        Args:
+           composition: Normalized dictionary of {Element: Fraction}.
+           
+        Returns:
+           Mixing enthalpy in kJ/mol.
+        """
         elements = list(composition.keys())
         h_mix = 0.0
         
@@ -159,105 +147,69 @@ class MaterialProcessor:
                 el1, el2 = elements[i], elements[j]
                 c_i, c_j = composition[el1], composition[el2]
                 
-                # Look up binary enthalpy
                 h_ij = self.db.get_enthalpy(el1, el2)
-                
-                # H_mix formula approx = Sum(4 * H_ij * c_i * c_j)
-                # Note: The factor 4 is often used in regular solution models where H_ij is the enthalpy at equiatomic composition x=0.5
-                # If H_ij is partial molar or otherwise defined, this might vary. Assuming H_ij is Omega_ij, then H = Omega * c * c.
-                # If H_ij in our table is simply the heat of mixing at 50-50, then Omega approx 4 * H_5050.
+                # Miedema approximation model factor
                 h_mix += 4 * h_ij * c_i * c_j
                 
         return h_mix
 
-    def calculate_cermet_properties(self, composition, particle_size_um=1.0, is_weight_percent=False):
+    def calculate_cermet_properties(self, 
+                                  composition: Dict[str, float], 
+                                  particle_size_um: float = 1.0, 
+                                  is_weight_percent: bool = False) -> Dict[str, float]:
         """
-        Calculates specific properties:
-        - Binder Volume Fraction
-        - Mean Free Path (Exner)
-        
-        Args:
-            composition: Dictionary of Element/Phase -> Amount.
-            particle_size_um: Grain size in microns.
-            is_weight_percent: If True, values in composition are treated as weight ratios (e.g. Co=10, WC=90).
-                               If False, values are treated as ATOMIC ratios (e.g. W=1, C=1, Co=0.1).
+        Calculates cermet-specific properties like binder volume and mean free path.
         """
-        # Heuristic to identify binder 
         binders = {'Co', 'Ni', 'Fe', 'Al', 'Cu', 'Mn'}
-        
         weight_fracs = {}
         
         if is_weight_percent:
-            # Input is already weight (e.g. 10.0, 90.0)
             total_w = sum(composition.values())
-            if total_w == 0:
-                return {}
-            weight_fracs = {k: v/total_w for k,v in composition.items()}
+            if total_w == 0: return {}
+            weight_fracs = {k: v/total_w for k, v in composition.items()}
         else:
-            # Input is Atomic -> Convert to Weight
-            # Atomic Fraction * Atomic Mass -> Weight -> Normalize
+            # Convert Atomic -> Weight
             total_weight = 0.0
-            
+            temp_weights = {}
             for el, atomic_frac in composition.items():
-                mass = self.db.get_property(el, 'mass')
-                if mass is not None:
+                mass = self.db.get_property(el, 'mass') or (self.element_data.get(el, {}).get('mass'))
+                if mass:
                     w = atomic_frac * mass
+                    temp_weights[el] = w
                     total_weight += w
                 else:
-                    # Missing data for element (or compound key like WC)
-                    return {} 
+                    return {} # Missing mass data
             
-            if total_weight == 0:
-                return {}
-                
-            for el, atomic_frac in composition.items():
-                 mass = self.db.get_property(el, 'mass')
-                 # Already checked not None above, but safe
-                 if mass:
-                    w = atomic_frac * mass
-                    weight_fracs[el] = w / total_weight
-             
-        # Normalize Weight Fractions (just to be safe)
-        
-        # Weight -> Volume Conversion
-        # Vol_i = (Wt_i / Rho_i) 
-        # VolFrac_i = Vol_i / Sum(Vol_k)
-        
+            if total_weight == 0: return {}
+            weight_fracs = {k: v/total_weight for k, v in temp_weights.items()}
+
+        # Weight -> Volume
         total_vol = 0.0
         vol_fracs = {}
         
         for el, w_frac in weight_fracs.items():
-            rho = self.db.get_property(el, 'rho')
-            if rho is not None:
+            rho = self.db.get_property(el, 'rho') or (self.element_data.get(el, {}).get('rho'))
+            if rho:
                 v = w_frac / rho
                 total_vol += v
             else:
-                # If key is not in DB (e.g. "WC"), we fail.
-                # Assuming input is decomposed to elements OR we add "WC" to DB.
-                # For Cermet formulas like "AlCo...", they are elements.
-                return {} 
-                
-        if total_vol == 0:
-            return {}
-            
+                return {} # Missing density data
+
+        if total_vol == 0: return {}
         theoretical_density = 1.0 / total_vol
-            
-        binder_vol = 0.0
         
+        binder_vol = 0.0
         for el, w_frac in weight_fracs.items():
-            rho = self.db.get_property(el, 'rho')
-            # Safe logic
+            rho = self.db.get_property(el, 'rho') or (self.element_data.get(el, {}).get('rho'))
             if rho:
                 v_frac = (w_frac / rho) / total_vol
                 vol_fracs[el] = v_frac
                 if el in binders:
                     binder_vol += v_frac
-                
-        # Mean Free Path (Exner)
-        # lambda = 2/3 * (V_binder / (1 - V_binder)) * d_grain
-        if binder_vol >= 1.0 or binder_vol <= 0.0:
-            mfp = 0.0 # Undefined or monolithic
-        else:
+
+        # Exner formula
+        mfp = 0.0
+        if 0.0 < binder_vol < 1.0:
             mfp = (2/3) * (binder_vol / (1 - binder_vol)) * particle_size_um
             
         return {
@@ -266,184 +218,123 @@ class MaterialProcessor:
             'Theoretical Density (g/cm^3)': round(theoretical_density, 4)
         }
 
-    def calculate_binder_physics(self, full_composition, sinter_temp_c=None):
+    def calculate_binder_physics(self, full_composition: Dict[str, float], sinter_temp_c: Optional[float] = None) -> Dict[str, float]:
         """
-        Calculates advanced physics-based features for the binder phase.
-        Identifies binder elements, isolates them, and computes:
-        - T_liquidus (Corrected with Deep Eutectic model)
-        - Homologous Temperature (if sinter_temp_c provided)
-        - Lattice Mismatch (vs WC)
-        - CTE Mismatch (vs WC) [NEW]
-        - Wettability Index (vs WC) [NEW]
-        - Sigma Phase Risk [NEW]
-        - Carbon Deficiency Potential
+        Calculates advanced binder physics including liquidus temp and mismatches.
         """
-        # 1. Identify Binder Phase (Heuristic: exclude C, N, B, O)
-        binder_elements = {}
-        non_binder_sum = 0.0
+        # Identify binder elements
+        binder_comp = {el: amt for el, amt in full_composition.items() if el not in ['C', 'N', 'B', 'O']}
+        total_binder = sum(binder_comp.values())
         
-        for el, amt in full_composition.items():
-            if el not in ['C', 'N', 'B', 'O']:
-                binder_elements[el] = amt
-            else:
-                non_binder_sum += amt
+        if total_binder == 0: return {}
+        binder_comp = {k: v/total_binder for k, v in binder_comp.items()} # Normalize
         
-        # Normalize binder composition
-        total_binder = sum(binder_elements.values())
-        if total_binder == 0:
-            return {}
-            
-        binder_comp = {k: v/total_binder for k,v in binder_elements.items()}
-        
-        # --- 1. Melting Point & T_homo (Deep Eutectic Correction) ---
-        # T_liq linear = sum(c_i * Tm_i)
+        # Melt Point & T_homo
         t_lin = 0.0
         for el, frac in binder_comp.items():
             tm = self.db.get_property(el, 'melting_point')
-            if tm:
-                t_lin += frac * tm
-        
-        # Mixing Entropy of Binder
+            if tm: t_lin += frac * tm
+            
         s_mix_binder = -sum(c * math.log(c) for c in binder_comp.values() if c > 0)
-        
-        # Correction: T_liq = T_lin - K * S_mix
-        # K is heuristic constant. For eutectics, significant drop. 
-        # Using K=50 approx.
-        t_liq = t_lin - (50 * s_mix_binder)
+        t_liq = t_lin - (50 * s_mix_binder) # Deep eutectic heuristic
         
         t_homo = 0.0
         if sinter_temp_c is not None and t_liq > 0:
-            t_sinter_k = sinter_temp_c + 273.15
-            t_homo = t_sinter_k / t_liq
-            
-        # --- 2. Lattice Mismatch ---
-        vec = 0.0
+             t_homo = (sinter_temp_c + 273.15) / t_liq
+             
+        # Mismatches (Lattice, Modulus, CTE, Wettability)
+        params = {'vec': 0.0, 'a_mix': 0.0, 'g_mix': 0.0, 'cte_mix': 0.0, 'wet_index': 0.0}
+        
         for el, frac in binder_comp.items():
-            v = self.db.get_property(el, 'vec')
-            if v: vec += frac * v
+            props = {
+                'vec': self.db.get_property(el, 'vec') or self.element_data.get(el, {}).get('vec'),
+                'r': self.db.get_property(el, 'r') or self.element_data.get(el, {}).get('r'),
+                'g': self.db.get_property(el, 'shear_modulus_GPa'),
+                'cte': self.db.get_property(el, 'cte_micron_per_k'),
+                'wet': self.db.get_property(el, 'wettability_index_wc')
+            }
             
-        a_mix = 0.0
-        for el, frac in binder_comp.items():
+            # VEC
+            if props['vec']: params['vec'] += frac * props['vec']
+            
+            # Lattice Constant
             a_el = self.db.get_property(el, 'lattice_constant_angstrom')
-            # Fallback
-            if not a_el:
-                r_el = self.db.get_property(el, 'r')
-                if r_el:
-                    if vec >= 8.0: # FCC
-                        a_el = r_el * 2 * math.sqrt(2) 
-                    else: # BCC
-                        a_el = r_el * 4 / math.sqrt(3) 
+            if not a_el and props['r']:
+                # Approximate FCC vs BCC radius
+                factor = 2 * math.sqrt(2) if (params['vec'] >= 8.0) else (4 / math.sqrt(3))
+                a_el = props['r'] * factor
+            if a_el: params['a_mix'] += frac * a_el
             
-            if a_el:
-                a_mix += frac * a_el
-                
-        # Mismatch epsilon
-        epsilon = 0.0
-        if a_mix > 0:
-            epsilon = (a_mix - P_WC['a']) / P_WC['a']
-            
-        # --- 3. Modulus Mismatch ---
-        g_mix = 0.0
-        for el, frac in binder_comp.items():
-            g_el = self.db.get_property(el, 'shear_modulus_GPa')
-            if g_el:
-                g_mix += frac * g_el
-                
-        delta_G = abs(g_mix - P_WC['G'])
+            # Others
+            if props['g']: params['g_mix'] += frac * props['g']
+            if props['cte']: params['cte_mix'] += frac * props['cte']
+            if props['wet']: params['wet_index'] += frac * props['wet']
 
-        # --- 4. CTE Mismatch [NEW] ---
-        # alpha_mix
-        cte_mix = 0.0
-        for el, frac in binder_comp.items():
-            c = self.db.get_property(el, 'cte_micron_per_k')
-            if c:
-                cte_mix += frac * c
+        # Compare with WC targets
+        wc = self.wc_props
+        epsilon = (params['a_mix'] - wc.get('a', 2.906)) / wc.get('a', 2.906) if params['a_mix'] else 0.0
+        delta_g = abs(params['g_mix'] - wc.get('G', 283.0))
+        delta_cte = abs(params['cte_mix'] - wc.get('alpha', 5.2))
         
-        # Mismatch vs WC
-        delta_cte = abs(cte_mix - P_WC['alpha'])
-
-        # --- 5. Wettability Index [NEW] ---
-        wet_index = 0.0
+        # Sigma Phase Risk
+        sigma_risk = 0
+        if 6.8 <= params['vec'] <= 8.2:
+            sigma_risk += 1
+            if any(x in binder_comp for x in ['Cr', 'V', 'Mo']):
+                sigma_risk += 1
+                
+        # C Deficiency
+        c_def = 0.0
         for el, frac in binder_comp.items():
-            w = self.db.get_property(el, 'wettability_index_wc')
-            if w is not None:
-                wet_index += frac * w
-        
-        # --- 6. Sigma Phase Risk [NEW] ---
-        # Rule of thumb: VEC [6.8, 8.0] is high risk for Sigma in HEAs (esp with Cr/V/Mo)
-        # Also geometric distortion helps driving it? 
-        sigma_risk_score = 0
-        if 6.8 <= vec <= 8.2:
-            sigma_risk_score += 1
-            if 'Cr' in binder_comp or 'V' in binder_comp or 'Mo' in binder_comp:
-                sigma_risk_score += 1
-        
-        # --- 7. Carbon Deficiency Potential ---
-        c_deficiency = 0.0
-        for el, frac in binder_comp.items():
-            carbide_formulas = [f"{el}C", f"{el}2C", f"{el}3C2"]
-            hf_val = 0.0
-            for form in carbide_formulas:
-                 val = self.db.get_formation_enthalpy(form)
-                 if val:
-                     if "3C2" in form: val /= 3
-                     elif "2C" in form: val /= 2
-                     hf_val = val
-                     break
-            c_deficiency += frac * hf_val
+            # Simply check Mono-carbide formation Enthalpy as proxy
+            hf = self.db.get_formation_enthalpy(f"{el}C") or 0.0
+            c_def += frac * hf
 
         return {
             'T_liquidus (K)': round(t_liq, 2),
-            'T_liquidus_Ideal (K)': round(t_lin, 2), # Keep old for comparison
+            'T_liquidus_Ideal (K)': round(t_lin, 2),
             'Homologous Temp': round(t_homo, 4),
             'Lattice Mismatch (%)': round(epsilon * 100, 4),
-            'Shear Modulus Diff (GPa)': round(delta_G, 2),
+            'Shear Modulus Diff (GPa)': round(delta_g, 2),
             'CTE Mismatch (um/m/K)': round(delta_cte, 2),
-            'Wettability Index (0-10)': round(wet_index, 2),
-            'Sigma Phase Risk': sigma_risk_score,
-            'C Deficiency Potential': round(c_deficiency, 2)
+            'Wettability Index (0-10)': round(params['wet_index'], 2),
+            'Sigma Phase Risk': sigma_risk,
+            'C Deficiency Potential': round(c_def, 2)
         }
 
-    def process_batch(self, formulas_list):
-        """
-        Simple batch processing for a list of formulas.
-        Returns a DataFrame with results.
-        """
+    def process_batch(self, formulas_list: List[str]) -> pd.DataFrame:
+        """Batch processes a list of formula strings."""
         df = pd.DataFrame({'Formula': formulas_list})
         return self.process_batch_extended(df, 'Formula')
 
-    def process_batch_extended(self, df, formula_col, grain_size_col=None, particle_size_default=1.0, is_weight_percent=False):
+    def process_batch_extended(self, 
+                             df: pd.DataFrame, 
+                             formula_col: str, 
+                             grain_size_col: Optional[str] = None, 
+                             particle_size_default: float = 1.0, 
+                             is_weight_percent: bool = False) -> pd.DataFrame:
+        """
+        Extends a dataframe with calculated properties used in HEA Cermet Lab.
+        """
         results = []
         formulas = df[formula_col].astype(str).tolist()
         
-        # Check if grain size column exists
-        grain_sizes = []
-        if grain_size_col and grain_size_col in df.columns:
-            grain_sizes = df[grain_size_col].astype(float).tolist()
-        else:
-            grain_sizes = [particle_size_default] * len(formulas)
-            
-        # Check for Sinter/Process Temp column
-        sinter_temps = []
-        possible_temp_cols = ['Sinter_Temp', 'Temperature', 'T_sinter', 'Process_Temp']
-        temp_col = next((c for c in possible_temp_cols if c in df.columns), None)
+        grain_sizes = df[grain_size_col].astype(float).tolist() if (grain_size_col and grain_size_col in df.columns) else [particle_size_default] * len(formulas)
         
-        if temp_col:
-            sinter_temps = df[temp_col].astype(float).tolist()
-        else:
-            sinter_temps = [None] * len(formulas)
-            
+        # Attempt to find common temperature columns
+        temp_col = next((c for c in ['Sinter_Temp', 'Temperature', 'T_sinter', 'Process_Temp'] if c in df.columns), None)
+        sinter_temps = df[temp_col].astype(float).tolist() if temp_col else [None] * len(formulas)
+
         for i, f in enumerate(formulas):
             comp = self.parse_formula(f)
             if comp:
-                # Basic HEA
+                # 1. Basic HEA Props
                 props = self.calculate_properties(comp)
                 
-                # Enthalpy
+                # 2. Enthalpy
                 props['Enthalpy_mix (kJ/mol)'] = round(self.calculate_enthalpy(comp), 4)
                 
-                # Cermet
-                # If is_weight_percent=True, 'comp' (parsed from string) acts as weight map
+                # 3. Cermet Props
                 cermet_props = self.calculate_cermet_properties(
                     comp, 
                     particle_size_um=grain_sizes[i], 
@@ -451,27 +342,19 @@ class MaterialProcessor:
                 )
                 props.update(cermet_props)
                 
-                # Advanced Physics Features
-                # Calculate based on ATOMIC composition (so if input was weight, we might need converted atomic comp)
-                # But parse_formula returns 'comp' which is treated as atomic unless 'is_weight_percent' flag says otherwise in context of density calc.
-                # However, calculate_properties treats 'comp' as atomic. 
-                # If 'is_weight_percent' is True, self.parse_formula(f) still returns numbers.
-                # If those numbers are weights, we need to convert to atomic for physics calcs (VEC, Melting Point).
-                
+                # 4. Physics using Atomic composition
                 atomic_comp = comp
                 if is_weight_percent:
-                    # Convert Weight (comp) -> Atomic
-                    # mol = wt / atomic_mass
+                    # Conversion needed for physics (Tm, VEC, etc rely on atomic)
                     mols = {}
                     for el, wt in comp.items():
-                        mass = self.db.get_property(el, 'mass')
-                        if mass:
-                            mols[el] = wt / mass
-                    # Normalize
+                        mass = self.db.get_property(el, 'mass') or self.element_data.get(el, {}).get('mass')
+                        if mass: mols[el] = wt / mass
+                    
                     total_mol = sum(mols.values())
                     if total_mol > 0:
-                        atomic_comp = {k: v/total_mol for k,v in mols.items()}
-                
+                        atomic_comp = {k: v/total_mol for k, v in mols.items()}
+                        
                 physics_props = self.calculate_binder_physics(atomic_comp, sinter_temp_c=sinter_temps[i])
                 props.update(physics_props)
                 
@@ -479,8 +362,5 @@ class MaterialProcessor:
             else:
                 results.append({'Error': 'Invalid Composition'})
                 
-        # Convert list of dicts to DF
         df_res = pd.DataFrame(results)
-        
-        # Concat with original
         return pd.concat([df.reset_index(drop=True), df_res], axis=1)
