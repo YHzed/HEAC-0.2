@@ -1,0 +1,72 @@
+[
+    {
+        "timestamp": "2025-12-11T15:21:40.496088",
+        "activity_type": "Model Training",
+        "details": "Model: 线性回归 (Linear Regression)",
+        "status": "Started",
+        "error_message": null
+    },
+    {
+        "timestamp": "2025-12-11T15:21:40.503374",
+        "activity_type": "Model Training",
+        "details": "Model: 线性回归 (Linear Regression), Metrics: {'MSE': 21.5403436257683, 'R2 Score': 0.6555388500227769}",
+        "status": "Success",
+        "error_message": null
+    },
+    {
+        "timestamp": "2025-12-11T15:21:46.760764",
+        "activity_type": "Model Training",
+        "details": "Model: 线性回归 (Linear Regression)",
+        "status": "Started",
+        "error_message": null
+    },
+    {
+        "timestamp": "2025-12-11T15:21:46.768700",
+        "activity_type": "Model Training",
+        "details": "Model: 线性回归 (Linear Regression), Metrics: {'MSE': 41210.753795324636, 'R2 Score': 0.62245343018383}",
+        "status": "Success",
+        "error_message": null
+    },
+    {
+        "timestamp": "2025-12-11T15:22:59.311795",
+        "activity_type": "Model Training",
+        "details": "Model: 线性回归 (Linear Regression)",
+        "status": "Started",
+        "error_message": null
+    },
+    {
+        "timestamp": "2025-12-11T15:22:59.317933",
+        "activity_type": "Model Training",
+        "details": "Model: 线性回归 (Linear Regression), Metrics: {'MSE': 21.5403436257683, 'R2 Score': 0.6555388500227769}",
+        "status": "Success",
+        "error_message": null
+    },
+    {
+        "timestamp": "2025-12-11T15:31:07.949816",
+        "activity_type": "Model Training",
+        "details": "Model: XGBoost",
+        "status": "Started",
+        "error_message": null
+    },
+    {
+        "timestamp": "2025-12-11T15:31:08.348946",
+        "activity_type": "Model Training",
+        "details": "Model: XGBoost, Metrics: {'MSE': 17173.521484375, 'R2 Score': 0.8426672220230103}",
+        "status": "Success",
+        "error_message": null
+    },
+    {
+        "timestamp": "2025-12-11T15:33:41.262965",
+        "activity_type": "Model Training",
+        "details": "Model: 堆叠回归 (Stacking Regressor)",
+        "status": "Started",
+        "error_message": null
+    },
+    {
+        "timestamp": "2025-12-11T15:33:47.227691",
+        "activity_type": "Model Training",
+        "details": "Model: 堆叠回归 (Stacking Regressor), Metrics: {'MSE': 15832.864469073098, 'R2 Score': 0.8549494216885442}",
+        "status": "Success",
+        "error_message": null
+    }
+]

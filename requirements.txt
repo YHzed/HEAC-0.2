@@ -1,0 +1,16 @@
+streamlit
+pandas
+plotly
+scikit-learn
+openpyxl
+pyarrow
+optuna
+
+xgboost
+lightgbm
+catboost
+
+ChemDataExtractor
+gensim
+pypdf
+git+https://github.com/materialsintelligence/mat2vec.git
