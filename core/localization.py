@@ -232,14 +232,6 @@ translations = {
         'lit_error_analysis': "Error analyzing file: {}",
         'lit_header_db': "Extracted Data Library",
         'lit_no_records': "No records found.",
-        'lit_header_search': "Find Similar Materials (using mat2vec)",
-        'lit_enter_formula': "Enter Material Formula (e.g., TiC, Al2O3)",
-        'lit_top_n': "Top N results",
-        'lit_search_btn': "Search",
-        'lit_sim_result': "Most similar to **{}**:",
-        'lit_no_result': "No results found or material not in vocabulary.",
-        'lit_warn_formula': "Please enter a formula.",
-
         # Inverse Design
         'tab_inverse': "Inverse Design",
         'header_inverse': "4. Inverse Material Design",
@@ -480,13 +472,7 @@ translations = {
         'lit_error_analysis': "文件分析出错: {}",
         'lit_header_db': "提取数据资料库",
         'lit_no_records': "未找到记录。",
-        'lit_header_search': "查找相似材料 (基于 mat2vec)",
-        'lit_enter_formula': "输入材料化学式 (例如: TiC, Al2O3)",
-        'lit_top_n': "前 N 个结果",
-        'lit_search_btn': "搜索",
-        'lit_sim_result': "最相似于 **{}** 的材料:",
-        'lit_no_result': "未找到结果或材料不在词汇表中。",
-        'lit_warn_formula': "请输入化学式。",
+
 
         # Inverse Design
         'tab_inverse': "逆向设计",

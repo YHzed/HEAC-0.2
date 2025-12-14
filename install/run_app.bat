@@ -61,5 +61,9 @@ echo [INFO] Starting Streamlit application...
 echo ==========================================
 streamlit run app.py
 
-pause
+if %errorlevel% neq 0 (
+    echo [ERROR] Application crashed or failed to start.
+    pause
+)
+
 popd

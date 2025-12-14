@@ -40,6 +40,27 @@ def test_improvements():
             if delta_t <= 0:
                 print("FAIL: No freezing point depression observed")
         
+        if 'Lattice Mismatch c-axis (%)' in res_hea:
+             print(f"Lattice Mismatch c-axis (%): {res_hea['Lattice Mismatch c-axis (%)']}")
+        else:
+             print("FAIL: Lattice Mismatch c-axis (%) missing")
+
+        print("\nTesting Composite Hardness (WC-10Co)...")
+        # WC-10wt% Co is approx 16vol% Co
+        # Co Hardness ~ 250 HV (Annealed) to 400 HV (Sintered/Strained). Let's use 300 HV.
+        # Grain Size 1.0 um
+        vol_frac_co = 0.16
+        hv_co = 300.0
+        d_wc = 1.0
+        
+        res_hard = mp.calculate_composite_hardness(hv_co, vol_frac_co, d_wc)
+        print("Composite Hardness Results:", res_hard)
+        
+        if 'Predicted Hardness (Geo) [HV]' not in res_hard:
+             print("FAIL: Composite Hardness calculation missing")
+        else:
+             print(f"H_Geo: {res_hard['Predicted Hardness (Geo) [HV]']} HV")
+
         print("\nSUCCESS: All new keys present and logic operational.")
         
     except Exception as e:

@@ -31,7 +31,7 @@ with st.sidebar:
     mode_options = {
         'lit_upload_analyze': t('lit_upload_analyze'),
         'lit_db_view': t('lit_db_view'),
-        'lit_search_sim': t('lit_search_sim')
+
     }
     
     # Helper to reverse lookup key from display string (for logic)
@@ -86,21 +86,3 @@ elif selected_mode_key == 'lit_db_view':
     else:
         df = pd.DataFrame(records)
         st.dataframe(df)
-
-elif selected_mode_key == 'lit_search_sim':
-    st.header(t('lit_header_search'))
-    
-    formula = st.text_input(t('lit_enter_formula'))
-    top_n = st.slider(t('lit_top_n'), 1, 10, 5)
-    
-    if st.button(t('lit_search_btn')):
-        if formula:
-            results = manager.analyzer.find_similar_materials(formula, topn=top_n)
-            if results:
-                st.write(t('lit_sim_result').format(formula))
-                for mat, score in results:
-                    st.write(f"- **{mat}**: {score:.4f}")
-            else:
-                st.warning(t('lit_no_result'))
-        else:
-            st.warning(t('lit_warn_formula'))

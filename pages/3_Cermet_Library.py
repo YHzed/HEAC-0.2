@@ -4,6 +4,7 @@ import pandas as pd
 import os
 from core.localization import get_text
 from core.session import initialize_session_state
+from core.material_database import db
 
 # ==============================================================================
 # INITIALIZATION
@@ -25,19 +26,10 @@ st.markdown("""
 # ==============================================================================
 # DATA LOADING
 # ==============================================================================
-@st.cache_data
-def load_json_data(filename):
-    file_path = os.path.join(os.path.dirname(__file__), '..', 'core', 'data', filename)
-    try:
-        with open(file_path, 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        st.error(f"Data file not found: {filename}")
-        return {}
-
-elements_data = load_json_data('elements.json')
-enthalpy_data = load_json_data('enthalpy.json')
-compounds_data = load_json_data('compounds.json')
+elements_data = db.get_all_elements()
+enthalpy_data = db.get_all_enthalpy_data()
+compounds_data = db.get_all_compounds()
+heac_library = db.get_heac_library()
 
 # ==============================================================================
 # MAIN PAGE
@@ -47,11 +39,13 @@ st.markdown(t('lib_intro'))
 st.divider()
 
 # Tabs
-tab_elem, tab_enth, tab_cer, tab_proc = st.tabs([
+# Tabs
+tab_elem, tab_enth, tab_cer, tab_proc, tab_heac = st.tabs([
     t('tab_elements'), 
     t('tab_enthalpy'), 
     t('tab_ceramic'), 
-    t('tab_process')
+    t('tab_process'),
+    "HEAC Database (MP)"
 ])
 
 # ------------------------------------------------------------------------------
@@ -191,3 +185,69 @@ with tab_proc:
     df_proc.columns = [t('process_param'), t('process_desc'), t('process_range')]
     
     st.table(df_proc)
+
+# ------------------------------------------------------------------------------
+# TAB 5: HEAC MP LIBRARY
+# ------------------------------------------------------------------------------
+with tab_heac:
+    st.subheader("HEAC Materials Project Database")
+    st.markdown("Comprehensive database of transition metal carbides, nitrides, and borides fetched from Materials Project.")
+    
+    if heac_library and 'materials' in heac_library:
+        materials = heac_library['materials']
+        
+        # Flatten for table
+        rows_hea = []
+        for mid, props in materials.items():
+            # Basic info
+            row = {
+                'ID': mid,
+                'Formula': props.get('formula_pretty'),
+                'Density': props.get('density'),
+                'Structure': props.get('symmetry', {}).get('crystal_system'),
+                'Formation E': props.get('formation_energy_per_atom'),
+                'Is Stable': props.get('is_stable'),
+            }
+            # Calculated Props
+            row['VEC'] = props.get('vec')
+            row['delta'] = props.get('delta_size_diff')
+            row['H_mix'] = props.get('mixing_enthalpy')
+            row['Omega'] = props.get('omega')
+            
+            # Mechanical (if available)
+            row['Bulk Modulus'] = props.get('bulk_modulus')
+            row['Shear Modulus'] = props.get('shear_modulus')
+            row['Hv (Est)'] = props.get('hardness_chen')
+            
+            rows_hea.append(row)
+            
+        df_hea = pd.DataFrame(rows_hea)
+        
+        # Filters
+        col1, col2 = st.columns(2)
+        with col1:
+            search_formula = st.text_input("Search Formula", placeholder="e.g., TiC", key="search_heac")
+        with col2:
+            st.info(f"Total Entries: {len(df_hea)}")
+            
+        if search_formula:
+            df_hea = df_hea[df_hea['Formula'].str.contains(search_formula, case=False, na=False)]
+            
+        # Display
+        st.dataframe(
+            df_hea, 
+            use_container_width=True, 
+            hide_index=True,
+            column_config={
+                "Formation E": st.column_config.NumberColumn("Formation E (eV/atom)", format="%.3f"),
+                "Density": st.column_config.NumberColumn("Density (g/cm³)", format="%.2f"),
+                "VEC": st.column_config.NumberColumn("VEC", format="%.1f"),
+                "H_mix": st.column_config.NumberColumn("H_mix (kJ/mol)", format="%.1f"),
+                "Omega": st.column_config.NumberColumn("Omega", format="%.1f"),
+                "Hv (Est)": st.column_config.NumberColumn("Hv (GPa)", format="%.1f"),
+            }
+        )
+    else:
+        st.warning("HEAC Library not found or empty. Please run the build script.")
+
+

@@ -13,4 +13,8 @@ catboost
 ChemDataExtractor
 gensim
 pypdf
-git+https://github.com/materialsintelligence/mat2vec.git
+
+
+# Materials Project API
+mp-api>=0.41.0
+python-dotenv>=1.0.0
