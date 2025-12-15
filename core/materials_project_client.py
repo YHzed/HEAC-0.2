@@ -189,5 +189,12 @@ class MaterialsProjectClient:
             
         return None
 
-# Global instance
-mp_client = MaterialsProjectClient()
+# Global instance - lazy or safe initialization
+try:
+    if config.MP_API_KEY:
+        mp_client = MaterialsProjectClient()
+    else:
+        mp_client = None
+except Exception as e:
+    print(f"Warning: Failed to initialize MP client: {e}")
+    mp_client = None

@@ -12,11 +12,11 @@ def processor():
     return MaterialProcessor()
 
 def test_initialization(processor):
-    """Test if data is loaded correctly from JSON."""
-    assert processor.element_data is not None
-    assert 'Co' in processor.element_data
-    assert processor.wc_props is not None
-    assert processor.wc_props['a'] > 0
+    """Test if data is loaded correctly."""
+    assert processor.db is not None
+    assert processor.db.get_element('Co') is not None
+    # wc_props is internal or module level, check if we can calculate hardness which uses it
+    assert processor.calculate_wc_hardness(1.0) > 0
 
 def test_parse_formula(processor):
     """Test formula parsing logic."""
