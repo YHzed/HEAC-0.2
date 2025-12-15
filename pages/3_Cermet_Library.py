@@ -2,9 +2,9 @@ import streamlit as st
 import json
 import pandas as pd
 import os
-from core.localization import get_text
-from core.session import initialize_session_state
-from core.material_database import db
+
+# 统一导入core模块
+from core import get_text, initialize_session_state, db
 
 # ==============================================================================
 # INITIALIZATION
@@ -193,8 +193,8 @@ with tab_heac:
     st.subheader("HEAC Materials Project Database")
     st.markdown("Comprehensive database of transition metal carbides, nitrides, and borides fetched from Materials Project.")
     
-    if heac_library and 'materials' in heac_library:
-        materials = heac_library['materials']
+    if heac_library:
+        materials = heac_library
         
         # Flatten for table
         rows_hea = []

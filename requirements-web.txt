@@ -1,0 +1,10 @@
+# HEAC 0.2 - Web应用依赖
+# 包含Streamlit Web界面所需依赖
+# 安装: pip install -r requirements-core.txt -r requirements-web.txt
+
+# Web框架
+streamlit>=1.30.0
+
+# 数据可视化
+plotly>=5.18.0
+pandas>=2.0.0

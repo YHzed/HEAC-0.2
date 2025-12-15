@@ -1,7 +1,11 @@
 
 import math
 from typing import Dict, Optional, Tuple, List
-from pymatgen.core import Element
+try:
+    from pymatgen.core import Element
+except ImportError:
+    Element = None
+    print("Warning: pymatgen not found. Some calculations will be limited.")
 from core.material_database import db
 
 # Universal gas constant in J/(mol K)
@@ -15,23 +19,32 @@ class HEACalculator:
     @staticmethod
     def calculate_vec(composition: Dict[str, float]) -> float:
         """
-        Calculate Valence Electron Concentration (VEC).
+        Calculate Valence Electron Concentration (VEC) based on Guo's definition.
         VEC = sum(ci * VECi)
+        Uses values from core.material_database (e.g. Al=3, not 13).
         """
         vec = 0.0
         total_fraction = sum(composition.values())
         
         for el_str, fraction in composition.items():
-            el = Element(el_str)
-            # pymatgen might return None for some valence properties depending on data source
-            # But usually group number is good proxy for VEC in this context?
-            # Actually standard VEC definition uses:
-            # - Transition metals: total s + d electrons (Group number)
-            # - Pre-transition: Group number
-            # - Post-transition/Non-metals: Group number usually works or valence shell e-
+            # Use database 'vec' property which follows Guo's standard (e.g. Al=3)
+            # Fallback to Element.group is risky for Al/Si if not in DB, but DB covers standard HEA elements.
+            v = db.get_property(el_str, 'vec')
             
-            # Using periodic table group is the standard definition for Guo's VEC
-            v = el.group
+            if v is None:
+                # Fallback attempts
+                try:
+                    if Element:
+                        el = Element(el_str)
+                        # For transition metals, group number is usually fine.
+                        v = el.group
+                        if v > 12: 
+                            v -= 10 # Rough heuristic for p-block (Al 13->3, Si 14->4)
+                    else:
+                        v = 0.0
+                except:
+                    v = 0.0
+            
             vec += (fraction / total_fraction) * v
             
         return vec
@@ -48,6 +61,8 @@ class HEACalculator:
         
         # 1. Calculate average radius
         for el_str, fraction in composition.items():
+            if not Element:
+                continue
             el = Element(el_str)
             r = el.atomic_radius
             if r is None:
@@ -81,6 +96,8 @@ class HEACalculator:
         # 1. Calculate average electronegativity
         for el_str, fraction in composition.items():
             try:
+                if not Element:
+                    continue
                 el = Element(el_str)
                 x = el.X # Pauling electronegativity
                 xs[el_str] = x
@@ -168,9 +185,12 @@ class HEACalculator:
             tm_avg = 0.0
             total_fraction = sum(composition.values())
             for el_str, fraction in composition.items():
-                el = Element(el_str)
-                # Use melting_point, handle None
-                tm = el.melting_point
+                if not Element:
+                    tm = 0
+                else:
+                    el = Element(el_str)
+                    # Use melting_point, handle None
+                    tm = el.melting_point
                 if tm is None: 
                     tm = 0 # Should not happen for metals
                 tm_avg += (fraction / total_fraction) * tm

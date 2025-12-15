@@ -68,5 +68,19 @@
         "details": "Model: 堆叠回归 (Stacking Regressor), Metrics: {'MSE': 15832.864469073098, 'R2 Score': 0.8549494216885442}",
         "status": "Success",
         "error_message": null
+    },
+    {
+        "timestamp": "2025-12-15T16:52:39.316603",
+        "activity_type": "Model Training",
+        "details": "Model: 堆叠回归 (Stacking Regressor)",
+        "status": "Success",
+        "error_message": null
+    },
+    {
+        "timestamp": "2025-12-15T16:54:24.057961",
+        "activity_type": "Model Training",
+        "details": "Model: 堆叠回归 (Stacking Regressor)",
+        "status": "Success",
+        "error_message": null
     }
 ]

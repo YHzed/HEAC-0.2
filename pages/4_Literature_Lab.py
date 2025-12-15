@@ -1,9 +1,12 @@
 
+
 import streamlit as st
 import os
 import pandas as pd
+
+# 统一导入core模块
+from core import get_text
 from core.literature.manager import LibraryManager
-from core.localization import get_text
 
 # Initialize Manager
 @st.cache_resource

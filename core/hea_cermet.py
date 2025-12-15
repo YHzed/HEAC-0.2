@@ -57,6 +57,9 @@ class MaterialProcessor:
     def __init__(self):
         # Use the shared database instance
         self.db = material_db
+        # Use HEACalculator for core HEA property calculations
+        from .hea_calculator import hea_calc
+        self.hea_calc = hea_calc
 
     def parse_formula(self, formula_str):
         """
@@ -97,6 +100,8 @@ class MaterialProcessor:
         - Mixing Entropy (S_mix) [R]
         - Valence Electron Concentration (VEC)
         - Atomic Size Difference (delta) [%]
+        
+        Uses HEACalculator for core calculations to ensure consistency.
         """
         if not composition:
             return None
@@ -105,47 +110,11 @@ class MaterialProcessor:
         # We will return it in units of R (gas constant), so calculation is just -sum(...)
         s_mix_R = -sum(c * math.log(c) for c in composition.values() if c > 0)
         
-        # 2. VEC: sum(c_i * (VEC)_i)
-        vec_vals = []
-        for el in composition:
-            vec = self.db.get_property(el, 'vec')
-            if vec is not None:
-                vec_vals.append(composition[el] * vec)
-            else:
-                # Handle missing property if needed, for now assume 0 or skip
-                pass
-
-        if vec_vals:
-            vec_avg = sum(vec_vals)
-        else:
-            vec_avg = 0.0
+        # 2. VEC: Use HEACalculator for consistency (newer version)
+        vec_avg = self.hea_calc.calculate_vec(composition)
         
-        # 3. Atomic Size Difference (delta)
-        # r_bar = sum(c_i * r_i)
-        # delta = sqrt(sum(c_i * (1 - r_i/r_bar)^2)) * 100
-        r_vals = []
-        fracs = []
-        
-        for el, frac in composition.items():
-            r = self.db.get_property(el, 'r')
-            if r is not None:
-                r_vals.append(r)
-                fracs.append(frac)
-        
-        if not r_vals:
-            return {
-                'S_mix (R)': round(s_mix_R, 4),
-                'VEC': round(vec_avg, 4),
-                'Delta (%)': 0.0
-            }
-
-        r_bar = sum(c * r for c, r in zip(fracs, r_vals))
-        
-        if r_bar == 0:
-             delta = 0.0
-        else:
-            sq_diffs = [c * ((1 - r / r_bar) ** 2) for c, r in zip(fracs, r_vals)]
-            delta = math.sqrt(sum(sq_diffs)) * 100
+        # 3. Atomic Size Difference: Use HEACalculator for consistency (newer version)
+        delta = self.hea_calc.calculate_atomic_size_difference(composition)
         
         return {
             'S_mix (R)': round(s_mix_R, 4),
@@ -154,24 +123,12 @@ class MaterialProcessor:
         }
 
     def calculate_enthalpy(self, composition):
-        elements = list(composition.keys())
-        h_mix = 0.0
+        """
+        Calculates mixing enthalpy.
         
-        for i in range(len(elements)):
-            for j in range(i + 1, len(elements)):
-                el1, el2 = elements[i], elements[j]
-                c_i, c_j = composition[el1], composition[el2]
-                
-                # Look up binary enthalpy
-                h_ij = self.db.get_enthalpy(el1, el2)
-                
-                # H_mix formula approx = Sum(4 * H_ij * c_i * c_j)
-                # Note: The factor 4 is often used in regular solution models where H_ij is the enthalpy at equiatomic composition x=0.5
-                # If H_ij is partial molar or otherwise defined, this might vary. Assuming H_ij is Omega_ij, then H = Omega * c * c.
-                # If H_ij in our table is simply the heat of mixing at 50-50, then Omega approx 4 * H_5050.
-                h_mix += 4 * h_ij * c_i * c_j
-                
-        return h_mix
+        Uses HEACalculator for consistency (newer version).
+        """
+        return self.hea_calc.calculate_mixing_enthalpy(composition)
 
     def calculate_cermet_properties(self, composition, particle_size_um=1.0, is_weight_percent=False):
         """

@@ -1,0 +1,14 @@
+# HEAC 0.2 - 核心功能依赖
+# 仅包含核心HEA计算功能所需的最小依赖
+# 安装: pip install -r requirements-core.txt
+
+# 核心科学计算
+numpy>=1.24.0
+
+# 材料科学
+pymatgen>=2023.0.0
+mp-api>=0.41.0
+emmet-core>=0.70.0
+
+# 工具
+python-dotenv>=1.0.0

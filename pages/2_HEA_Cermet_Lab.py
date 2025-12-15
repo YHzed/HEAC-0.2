@@ -5,13 +5,15 @@ import plotly.express as px
 import sys
 import os
 
-from core.data_processor import DataProcessor
-from core.localization import get_text
-from core.dataset_manager import DatasetManager
-from core.hea_cermet import MaterialProcessor
-from core.activity_logger import ActivityLogger
-
-# Import Core Architecture for Advanced Tabs
+# 统一导入core模块
+from core import (
+    DataProcessor, 
+    get_text, DatasetManager,
+    MaterialProcessor, 
+    ActivityLogger,
+    initialize_session_state
+)
+# 导入高级架构组件
 from core.system_architecture import DesignSpace, PhysicsEngine, AIPredictor, InverseOptimizer
 
 # Page Config
@@ -27,7 +29,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Initialization
-from core.session import initialize_session_state
 initialize_session_state()
 
 def t(key):
@@ -110,62 +111,90 @@ with tab_batch:
 with tab_single:
     st.header(t('header_single'))
     
-    # Input
+    # Input Layout
     c_s1, c_s2 = st.columns([1, 2])
     
     with c_s1:
-        st.subheader(t('hea_binder_comp'))
-        c_co = st.slider("Co (Cobalt)", 0.0, 2.0, 1.0, 0.1)
-        c_ni = st.slider("Ni (Nickel)", 0.0, 2.0, 1.0, 0.1)
-        c_fe = st.slider("Fe (Iron)", 0.0, 2.0, 1.0, 0.1)
-        c_cr = st.slider("Cr (Chromium)", 0.0, 2.0, 0.5, 0.1)
-        c_mo = st.slider("Mo (Molybdenum)", 0.0, 1.0, 0.2, 0.1)
+        st.subheader("1. Design Inputs")
         
-        st.subheader(t('microstructure'))
-        vol_wc = st.slider(t('wc_vol_frac'), 10.0, 90.0, 50.0, 5.0) / 100.0
+        # 1.1 Composition Mode
+        use_mass = st.toggle("Input by Mass %", value=False, help="Toggle between Atomic Ratio and Mass Percent")
+        label_suffix = "(wt%)" if use_mass else "(at ratio)"
+        
+        # 1.2 HEA Composition
+        st.markdown(f"**Binder Composition {label_suffix}**")
+        c_co = st.slider(f"Co {label_suffix}", 0.0, 2.0, 1.0, 0.1)
+        c_ni = st.slider(f"Ni {label_suffix}", 0.0, 2.0, 1.0, 0.1)
+        c_fe = st.slider(f"Fe {label_suffix}", 0.0, 2.0, 1.0, 0.1)
+        c_cr = st.slider(f"Cr {label_suffix}", 0.0, 2.0, 0.5, 0.1)
+        c_mo = st.slider(f"Mo {label_suffix}", 0.0, 1.0, 0.2, 0.1)
+        
+        # 1.3 Ceramic & Stickiness
+        st.markdown("**Ceramic Phase**")
+        ceramic_type = st.selectbox("Ceramic Type", ["WC", "TiC"])
+        
+        vol_wc = st.slider(t('wc_vol_frac').replace('WC', ceramic_type), 10.0, 90.0, 50.0, 5.0) / 100.0
         grain_size = st.number_input(t('grain_size_label'), 0.1, 10.0, 1.0, 0.1, key='sp_grain')
         
-        st.subheader(t('sintering_process'))
+        # 1.4 Process
+        st.markdown("**Process Parameters**")
+        proc_route = st.selectbox("Process Route", ["Vacuum Sintering", "HIP", "Sinter-HIP", "Spark Plasma Sintering"])
         temp = st.slider(t('temp_label'), 1200, 1600, 1400, 10)
         time = st.slider(t('time_label'), 30, 240, 60, 10)
 
-    # Logic
-    total_atomic = c_co + c_ni + c_fe + c_cr + c_mo
-    if total_atomic == 0:
+    # Logic Implementation
+    total_comp = c_co + c_ni + c_fe + c_cr + c_mo
+    if total_comp == 0:
         st.warning(t('total_atomic_zero'))
     else:
+        # Create DesignSpace Object
         design = DesignSpace(
             hea_composition={'Co': c_co, 'Ni': c_ni, 'Fe': c_fe, 'Cr': c_cr, 'Mo': c_mo},
-            ceramic_composition={'WC': 1.0},
+            is_mass_fraction=use_mass,
+            ceramic_type=ceramic_type,
             ceramic_vol_fraction=vol_wc,
             grain_size_um=grain_size,
             sinter_temp_c=temp,
-            sinter_time_min=time
+            sinter_time_min=time,
+            process_route=proc_route
         )
         
+        # Instantiate System Engines
         engine = PhysicsEngine()
         features = engine.compute_features(design)
         vol_stats = engine.calculate_volume_fractions(design)
         
         with c_s2:
+            # ------------------------------------------------------------------
+            # SECTION 2: PHYSICS ENGINE RESULTS
+            # ------------------------------------------------------------------
             st.subheader(t('physics_output'))
-            col1, col2, col3, col4 = st.columns(4)
-            col1.metric("VEC", f"{features['VEC']:.3f}", help=t('vec_help'))
-            col2.metric("Lattice Mismatch", f"{features['Lattice_Mismatch']*100:.2f}%", help=t('mismatch_help'))
-            col3.metric("Wettability", f"{features['Wettability_Index']:.2f}", help=t('wettability_help'))
-            col4.metric("Homologous T", f"{features['T_homologous']:.2f}", help=t('homologous_help'))
             
-            with st.expander(t('detailed_vol_frac'), expanded=True):
+            # Row 1: Key Physics Indicators
+            p1, p2, p3, p4 = st.columns(4)
+            p1.metric("VEC", f"{features['VEC']:.2f}", help="Valence Electron Concentration (>8.0 ~ Ductile)")
+            p2.metric(f"Mismatch ({ceramic_type})", f"{features['Lattice_Mismatch']*100:.2f}%", help=f"Lattice mismatch with {ceramic_type}")
+            p3.metric("Homologous T", f"{features['T_Homologous']:.2f}", help="Sintering T / Liquidus T")
+            p4.metric("Mixing Enthalpy", f"{features['H_mix']:.1f} kJ", help="Enthalpy of Mixing")
+
+            # Row 2: Secondary Physics
+            p5, p6, p7, p8 = st.columns(4)
+            p5.metric("CTE Mismatch", f"{features['CTE_Mismatch']:.1f}", help="Delta CTE (Binder vs Ceramic)")
+            p6.metric("Liquidus (Est)", f"{features['T_Liquidus_Est']-273.15:.0f} °C", help="Estimated Liquidus with Eutectic Depression")
+            p7.metric("Mixing Entropy", f"{features['S_mix']:.1f} R", help="Entropy of mixing")
+            p8.metric("Atomic Size Diff", f"{features['Delta_R']:.1f}%", help="Atomic size difference")
+            
+            with st.expander(t('detailed_vol_frac'), expanded=False):
                 v_col1, v_col2 = st.columns(2)
                 with v_col1:
                     st.write(f"**{t('phase_dist')}**")
                     df_phase = pd.DataFrame({
-                        "Phase": ["Ceramic (WC)", "Binder (HEA)"],
+                        "Phase": [f"Ceramic ({ceramic_type})", "Binder (HEA)"],
                         "Vol%": [vol_stats['Phase_Ceramic']*100, vol_stats['Phase_Binder']*100]
                     })
                     st.dataframe(df_phase, hide_index=True)
                 with v_col2:
-                    st.write(f"**{t('element_dist')}**")
+                    st.write(f"**{t('element_dist')} (Composite)**")
                     el_data = []
                     for k, v in vol_stats.items():
                         if 'Elem_Vol_' in k:
@@ -173,15 +202,36 @@ with tab_single:
                     st.dataframe(pd.DataFrame(el_data), hide_index=True)
 
             st.divider()
-            st.divider()
-            st.subheader(t('ai_pred'))
+            
+            # ------------------------------------------------------------------
+            # SECTION 3: ML PREDICTION RESULTS
+            # ------------------------------------------------------------------
+            st.subheader("3. AI Prediction System")
+            
             predictor = AIPredictor()
             preds = predictor.predict(features)
             
-            p_col1, p_col2, p_col3 = st.columns(3)
-            p_col1.metric(t('pred_hv'), f"{preds['Predicted_HV']:.0f}")
-            p_col2.metric(t('pred_k1c'), f"{preds['Predicted_K1C']:.2f}")
-            p_col3.metric(t('interface_quality'), f"{preds['Interface_Quality']:.2f}")
+            # Performance Metrics
+            m1, m2 = st.columns(2)
+            
+            # HV
+            hv_src = preds.get('HV_Source', 'Unknown')
+            delta_hv = "ML" if "ML" in hv_src else "Heuristic"
+            m1.metric(t('pred_hv'), f"{preds['Predicted_HV']:.0f} HV", delta=delta_hv, help=f"Source: {hv_src}")
+            
+            # K1C
+            k1c_src = preds.get('K1C_Source', 'Unknown')
+            delta_k1c = "ML" if "ML" in k1c_src else "Heuristic"
+            m2.metric(t('pred_k1c'), f"{preds['Predicted_K1C']:.2f} MPa·m½", delta=delta_k1c, help=f"Source: {k1c_src}")
+            
+            # Phase Stability Analysis
+            st.markdown("**Phase Composition Analysis (AI)**")
+            phase_analysis = preds.get('Phase_Analysis', 'N/A')
+            if "No ML Model" in str(phase_analysis):
+                st.warning(f"⚠️ {phase_analysis} - Please train a model in the Model Zoo to activate this feature.")
+            else:
+                st.success(f"✅ {phase_analysis}")
+
 
 # ==============================================================================
 # TAB 3: INVERSE DESIGN (From HEAC Framework)

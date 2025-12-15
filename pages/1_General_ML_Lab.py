@@ -1,16 +1,17 @@
 
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from core.data_processor import DataProcessor
-from core.analysis import Analyzer
-from core.models import ModelFactory, ModelTrainer
-from core.optimization import Optimizer
-from core.localization import get_text
-from core.dataset_manager import DatasetManager
-from core.model_manager import ModelManager
-from core.hea_cermet import MaterialProcessor
-from core.activity_logger import ActivityLogger
+
+# 统一导入core模块
+from core import (
+    DataProcessor, Analyzer,
+    ModelFactory, ModelTrainer, Optimizer,
+    get_text, DatasetManager, ModelManager,
+    MaterialProcessor, ActivityLogger,
+    initialize_session_state
+)
 
 # Page Config
 st.set_page_config(page_title="General ML Lab", page_icon="🤖", layout="wide")
@@ -202,9 +203,12 @@ elif page == t('nav_model'):
                         st.session_state.best_params = best
                         st.success(t('opt_complete'))
                         st.json(best)
-                if st.session_state.get('best_params') and st.button(t('apply_params')):
-                    for k,v in st.session_state.best_params.items(): st.session_state[f"p_{k}"] = v
-                    st.rerun()
+                def apply_best_params():
+                    for k,v in st.session_state.best_params.items():
+                        st.session_state[f"p_{k}"] = v
+
+                if st.session_state.get('best_params'):
+                    st.button(t('apply_params'), on_click=apply_best_params)
 
         with col2:
             st.subheader(t('training_action'))

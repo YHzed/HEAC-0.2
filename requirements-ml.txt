@@ -1,0 +1,20 @@
+# HEAC 0.2 - 机器学习功能依赖
+# 包含ML模型训练、优化等功能所需依赖
+# 安装: pip install -r requirements-core.txt -r requirements-ml.txt
+
+# 数据处理
+pandas>=2.0.0
+
+# 机器学习框架
+scikit-learn>=1.3.0
+
+# Gradient Boosting模型
+xgboost>=2.0.0
+lightgbm>=4.0.0
+catboost>=1.2.0
+
+# 超参数优化
+optuna>=3.5.0
+
+# 模型持久化
+joblib>=1.3.0
