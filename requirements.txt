@@ -1,0 +1,20 @@
+streamlit
+pandas
+plotly
+scikit-learn
+openpyxl
+pyarrow
+optuna
+
+xgboost
+lightgbm
+catboost
+
+ChemDataExtractor
+gensim
+pypdf
+
+
+# Materials Project API
+mp-api>=0.41.0
+python-dotenv>=1.0.0

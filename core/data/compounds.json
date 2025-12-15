@@ -1,0 +1,74 @@
+{
+    "WC": {
+        "enthalpy": -40.0,
+        "density": 15.63
+    },
+    "TiC": {
+        "enthalpy": -184.0,
+        "density": 4.93
+    },
+    "TaC": {
+        "enthalpy": -143.0,
+        "density": 14.3
+    },
+    "NbC": {
+        "enthalpy": -138.0,
+        "density": 7.6
+    },
+    "VC": {
+        "enthalpy": -101.0,
+        "density": 5.77
+    },
+    "HfC": {
+        "enthalpy": -209.0,
+        "density": 12.2
+    },
+    "ZrC": {
+        "enthalpy": -197.0,
+        "density": 6.73
+    },
+    "Cr3C2": {
+        "enthalpy": -89.0,
+        "density": 6.68
+    },
+    "Mo2C": {
+        "enthalpy": -53.0,
+        "density": 9.18
+    },
+    "AlN": {
+        "enthalpy": -318.0,
+        "density": 3.26
+    },
+    "TiN": {
+        "enthalpy": -338.0,
+        "density": 5.22
+    },
+    "SiC": {
+        "enthalpy": -65.0,
+        "density": 3.21
+    },
+    "Al2O3": {
+        "enthalpy": -1675.7,
+        "density": 3.95
+    },
+    "TiO2": {
+        "enthalpy": -944.0,
+        "density": 4.23
+    },
+    "Si3N4": {
+        "enthalpy": -744.8,
+        "density": 3.17
+    },
+    "ZrO2": {
+        "enthalpy": -1080.0,
+        "density": 5.68
+    },
+    "MgO": {
+        "enthalpy": -601.6,
+        "density": 3.58
+    },
+    "BN": {
+        "enthalpy": -250.9,
+        "density": 2.1
+    }
+}

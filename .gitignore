@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment Variables - CRITICAL: Protect API Keys
+.env
+
+# Cache and Temporary Files
+*.log
+.pytest_cache/
+.coverage
+htmlcov/
+catboost_info/
+
+# Materials Project Cache
+core/data/mp_cache/
+
+# Model Files (optional - uncomment if models are large)
+*.h5
+*.pkl
+saved_models/
+model/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project Specific
+activity_logs.json
