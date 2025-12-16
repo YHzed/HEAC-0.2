@@ -10,10 +10,24 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Union
 from datetime import datetime, timedelta
 
-from mp_api.client import MPRester
-from emmet.core.summary import SummaryDoc
+try:
+    from mp_api.client import MPRester
+    from emmet.core.summary import SummaryDoc
+except ImportError:
+    MPRester = None
+    SummaryDoc = None
+    print("Warning: mp-api not found. Materials Project integration will be disabled.")
 
 from core.config import config
+
+try:
+    from pymatgen.entries.compatibility import MaterialsProject2020Compatibility
+    from pymatgen.entries.computed_entries import ComputedEntry
+    from pymatgen.core import Composition
+except ImportError:
+    MaterialsProject2020Compatibility = None
+    ComputedEntry = None
+    Composition = None
 
 class MaterialsProjectClient:
     """
@@ -101,6 +115,10 @@ class MaterialsProjectClient:
             
         self._enforce_rate_limit()
         
+        if not MPRester:
+            print("Error: MPRester not available.")
+            return []
+            
         try:
             with MPRester(self.api_key) as mpr:
                 # Request only commonly needed fields to reduce complexity
@@ -188,6 +206,42 @@ class MaterialsProjectClient:
             return sorted_results[0].get('density')
             
         return None
+
+    def get_fere_correction(self, composition: Union[str, Dict[str, float]]) -> float:
+        """
+        Calculate the Materials Project Compatibility correction (incl. FERE for gases)
+        for a given composition.
+        Returns correction energy in eV/atom.
+        """
+        if not MaterialsProject2020Compatibility or not ComputedEntry or not Composition:
+            print("Warning: pymatgen not available for FERE correction.")
+            return 0.0
+            
+        try:
+            # Create a dummy computed entry
+            # Energy is irrelevant for the *correction value* calculation in many cases,
+            # for FERE (Gas corrections), it depends on composition.
+            
+            comp = Composition(composition)
+            # Create a dummy entry with 0 energy
+            entry = ComputedEntry(comp, 0.0)
+            
+            # Initialize Compatibility
+            compat = MaterialsProject2020Compatibility()
+            
+            # process_entries returns a list of processed entries
+            corrected_entries = compat.process_entries([entry])
+            
+            if corrected_entries:
+                corrected_entry = corrected_entries[0]
+                # The correction is the difference
+                return corrected_entry.correction / comp.num_atoms
+            
+            return 0.0
+            
+        except Exception as e:
+            print(f"Error calculating FERE correction: {e}")
+            return 0.0
 
 # Global instance - lazy or safe initialization
 try:

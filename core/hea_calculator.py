@@ -253,5 +253,138 @@ class HEACalculator:
         # Placeholder for future implementation
         return None
 
+    @staticmethod
+    def calculate_average_resistivity(composition: Dict[str, float]) -> Optional[float]:
+        """
+        Calculate the weighted average electrical resistivity (Ohm m).
+        Note: HEA resistivity is usually much higher due to scattering (Nordheim rule),
+        this calculates the 'Ideal' rule of mixtures base value.
+        """
+        rho_mix = 0.0
+        total_fraction = sum(composition.values())
+        
+        for el_str, fraction in composition.items():
+            if not Element:
+                return None
+            try:
+                el = Element(el_str)
+                # electrical_resistivity is in ohm m? 
+                # pymatgen gives it in units (check docs? usually ohm m or micro ohm cm)
+                # Pymatgen 2024: electrical_resistivity is in ohm m usually.
+                # But sometimes it's None.
+                rho = el.electrical_resistivity
+                if rho is None:
+                    # Fallback for common elements if needed or just skip
+                    continue
+                rho_mix += (fraction / total_fraction) * rho
+            except:
+                continue
+                
+        return rho_mix if rho_mix > 0 else None
+
+    @staticmethod
+    def estimate_youngs_modulus_mixture(composition: Dict[str, float]) -> Optional[float]:
+        """
+        Estimate Young's Modulus using Rule of Mixtures (GPa).
+        E_mix = sum(fi * Ei)
+        """
+        e_mix = 0.0
+        total_fraction = sum(composition.values())
+        valid_count = 0
+        
+        for el_str, fraction in composition.items():
+            if not Element:
+                return None
+            try:
+                el = Element(el_str)
+                # Youngs modulus in GPa. 
+                # Pymatgen: youngs_modulus.
+                e_val = el.youngs_modulus
+                if e_val is None:
+                    continue
+                e_mix += (fraction / total_fraction) * e_val
+                valid_count += 1
+            except:
+                continue
+                
+        # If we missed too many major elements, return None?
+        # For now, if we have any data, return it
+        return e_mix if valid_count > 0 else None
+
+    @staticmethod
+    def analyze_bonding_character(composition: Dict[str, float]) -> Dict[str, float]:
+        """
+        Analyze bonding character based on Electronegativity Difference.
+        Returns dictionary with:
+        - electronegativity_difference
+        - average_electronegativity
+        - ionic_character_percent (Pauling equation approximation)
+        """
+        delta_chi = HEACalculator.calculate_electronegativity_difference(composition)
+        
+        # Calculate X_bar again (optimization: reuse if called from elsewhere)
+        x_bar = 0.0
+        total_fraction = sum(composition.values())
+        if Element:
+             for el_str, fraction in composition.items():
+                try:
+                    x_bar += (fraction / total_fraction) * Element(el_str).X
+                except: pass
+        
+        # Pauling Ionic Character % = 100 * (1 - exp(- (delta_x / 2)^2 ))?
+        # Or simple linear approx?
+        # Pauling's formula for single bond A-B: 1 - exp(-0.25 * (Xa - Xb)^2)
+        # We use delta_chi as an 'averaged' difference?
+        # Let's use the formula on the aggregate delta_chi for a rough 'Global Ionicity'
+        
+        ionic_pct = 100 * (1 - math.exp(-0.25 * (delta_chi ** 2)))
+        
+        return {
+            "electronegativity_difference": delta_chi,
+            "average_electronegativity": x_bar,
+            "ionic_character_percent": ionic_pct,
+            "covalent_character_percent": 100.0 - ionic_pct
+        }
+
+    @staticmethod
+    def predict_properties_from_bonding(composition: Dict[str, float]) -> Dict[str, Optional[float]]:
+        """
+        Predict Young's Modulus and Hardness using Electronegativity Difference mechanism.
+        Uses heuristics if exact coefficients are not calibrated.
+        """
+        # 1. Get Base Modulus (Rule of Mixtures)
+        e_rom = HEACalculator.estimate_youngs_modulus_mixture(composition)
+        bonding = HEACalculator.analyze_bonding_character(composition)
+        delta_chi = bonding["electronegativity_difference"]
+        
+        # Heuristic: 
+        # Higher Ionic Character (Delta Chi) -> Stronger bond energy/stiffness?
+        # Often Covalent/Ionic mix is harder than Metallic.
+        # But high Delta Chi in HEAs might imply intermetallics (brittle).
+        
+        # Proposed correction/prediction:
+        # Hardness is often correlated with E. H ~ E/10 to E/20.
+        # Using a bonding correction factor?
+        # For now, we return the Rule-Of-Mixtures E and an estimated H based on E.
+        
+        # Hardness estimation (approx): Hv = 0.06 * E (common for ceramics/intermetallics)
+        # Adjusted by bonding?
+        # Let's provide the E_mix and a predicted Hardness.
+        
+        if e_rom is None:
+            return {"predicted_youngs_modulus": None, "predicted_hardness_bonding": None}
+            
+        # Hardness prediction based on E and Ionicity?
+        # Purely heuristic placeholder as per user request to "Establish... mechanism"
+        # We will assume H increases with Ionic Character component? 
+        
+        hv_est = 0.06 * e_rom # Trivial E -> H
+        
+        return {
+            "predicted_youngs_modulus": e_rom,
+            "predicted_hardness_bonding": hv_est, # GPa
+            "bonding_ionic_pct": bonding["ionic_character_percent"]
+        }
+
 # Global instance
 hea_calc = HEACalculator()

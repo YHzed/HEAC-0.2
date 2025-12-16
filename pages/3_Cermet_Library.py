@@ -74,6 +74,12 @@ with tab_elem:
             'melting_point': 'MeltingPoint'
         })
         
+        # 修复数据类型：将所有数值列转换为float，避免int和str混合比较错误
+        numeric_cols_elem = ['AtomicWeight', 'AtomicRadius', 'VEC', 'Electronegativity', 'MeltingPoint']
+        for col in numeric_cols_elem:
+            if col in df_elem.columns:
+                df_elem[col] = pd.to_numeric(df_elem[col], errors='coerce')
+        
         col_map = {
             'Element': t('col_element'),
             'AtomicWeight': t('col_atomic_weight'),
@@ -103,6 +109,9 @@ with tab_enth:
 
     if enthalpy_data:
         df_enthalpy = pd.DataFrame(list(enthalpy_data.items()), columns=['Pair', 'Enthalpy (kJ/mol)'])
+        
+        # 修复数据类型：将Enthalpy列转换为float
+        df_enthalpy['Enthalpy (kJ/mol)'] = pd.to_numeric(df_enthalpy['Enthalpy (kJ/mol)'], errors='coerce')
 
         if search_term:
             df_enthalpy = df_enthalpy[df_enthalpy['Pair'].str.contains(search_term, case=False)]
@@ -133,6 +142,10 @@ with tab_cer:
         
         # Keys in JSON are lowercase 'density'
         df_cer = df_cer.rename(columns={'density': 'Density'})
+        
+        # 修复数据类型：将Density列转换为float
+        if 'Density' in df_cer.columns:
+            df_cer['Density'] = pd.to_numeric(df_cer['Density'], errors='coerce')
         
         # Rename
         col_map_c = {
@@ -222,6 +235,24 @@ with tab_heac:
             rows_hea.append(row)
             
         df_hea = pd.DataFrame(rows_hea)
+        
+        # 彻底修复数据类型问题：强制转换所有列
+        # 1. 字符串列：强制转换为str类型
+        string_columns = ['ID', 'Formula', 'Structure']
+        for col in string_columns:
+            if col in df_hea.columns:
+                df_hea[col] = df_hea[col].fillna('N/A').astype(str)
+        
+        # 2. 布尔列：转换为字符串
+        if 'Is Stable' in df_hea.columns:
+            df_hea['Is Stable'] = df_hea['Is Stable'].map({True: 'Yes', False: 'No', None: 'Unknown'})
+        
+        # 3. 数值列：转换为float
+        numeric_columns = ['Density', 'Formation E', 'VEC', 'delta', 'H_mix', 'Omega', 
+                          'Bulk Modulus', 'Shear Modulus', 'Hv (Est)']
+        for col in numeric_columns:
+            if col in df_hea.columns:
+                df_hea[col] = pd.to_numeric(df_hea[col], errors='coerce')
         
         # Filters
         col1, col2 = st.columns(2)
