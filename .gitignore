@@ -46,3 +46,8 @@ Thumbs.db
 
 # Project Specific
 activity_logs.json
+
+# Training Data (large files)
+training data/zenodo/*.csv
+training data/*.csv
+*.zip
