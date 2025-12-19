@@ -200,7 +200,7 @@ elif page == "🧪 单成分预测":
     st.header("单成分物理属性预测")
     
     st.markdown("""
-    输入HEA成分，实时预测7个深层物理属性。支持多种成分格式。
+    输入HEA成分，实时预测4个深层物理属性。支持多种成分格式。
     """)
     
     # Input
@@ -323,7 +323,13 @@ elif page == "📁 批量特征注入":
     st.header("批量特征注入")
     
     st.markdown("""
-    上传包含HEA成分的CSV文件，自动添加7个辅助物理特征。
+    上传包含HEA成分的CSV文件，自动添加4个基于DFT数据的辅助物理特征。
+    
+    **注入特征**：
+    - 形成能 (Formation Energy)
+    - 晶格常数 (Lattice Parameter)  
+    - 晶格失配 vs WC (Lattice Mismatch)
+    - 磁矩 (Magnetic Moment)
     """)
     
     # File upload
@@ -357,11 +363,23 @@ elif page == "📁 批量特征注入":
                         # Standardize
                         df_std = standardize_dataframe(df, merge_duplicates=True)
                         
+                        # 标准化列名：将用户选择的列名转换为标准化后的列名
+                        from core.data_standardizer import data_standardizer
+                        data_standardizer._build_reverse_mapping()
+                        comp_col_lower = comp_col.lower().strip().replace(' ', '_')
+                        std_comp_col = data_standardizer._REVERSE_MAPPING.get(comp_col_lower, comp_col)
+                        
+                        # 检查标准化后的列是否存在
+                        if std_comp_col not in df_std.columns:
+                            st.error(f"缺少数据: 标准化后的成分列 '{std_comp_col}' 不存在于DataFrame中")
+                            st.info(f"可用的列: {', '.join(df_std.columns.tolist())}")
+                            st.stop()
+                        
                         # Inject
                         injector = FeatureInjector(model_dir='models/proxy_models')
                         df_enhanced = injector.inject_features(
                             df_std,
-                            comp_col=comp_col,
+                            comp_col=std_comp_col,
                             verbose=False
                         )
                         
@@ -375,7 +393,7 @@ elif page == "📁 批量特征注入":
                         
                         # Preview enhanced data
                         st.subheader("增强数据预览")
-                        display_cols = [comp_col] + new_cols
+                        display_cols = [std_comp_col] + new_cols
                         if all(col in df_enhanced.columns for col in display_cols):
                             st.dataframe(df_enhanced[display_cols].head(10), use_container_width=True)
                         

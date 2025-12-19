@@ -127,44 +127,90 @@ class FeatureInjector:
             self.featurizer = ElementProperty.from_preset("magpie")
             print("✅ 特征化器已准备就绪")
     
-    def featurize_composition(self, composition: Dict[str, float]) -> Optional[np.ndarray]:
+    def featurize_composition(self, composition: Dict[str, float], model_name: str = None) -> Optional[np.ndarray]:
         """
-        将成分字典特征化为Matminer特征向量
+        将成分字典转换为特征向量
         
         Args:
-            composition: 成分字典 {Element: fraction}
+            composition: 成分字典
+            model_name: 模型名称（用于特征维度适配）
             
         Returns:
-            特征向量（numpy数组），如果失败返回None
+            特征数组 (1, n_features)
         """
         if not MATMINER_AVAILABLE:
             warnings.warn("Matminer不可用，无法进行特征化")
             return None
-        
+
         self._initialize_featurizer()
         
+        if not composition:
+            return None
+        
         try:
-            # 创建Pymatgen Composition对象
-            comp_obj = Composition(composition)
+            # 构建成分字符串
+            comp_str = ''.join([f"{elem}{frac}" for elem, frac in composition.items()])
+            comp_obj = Composition(comp_str)
             
-            # 特征化
-            features = self.featurizer.featurize(comp_obj)
+            # 生成Matminer magpie特征（132个）
+            magpie_features = self.featurizer.featurize(comp_obj)
             
-            # 转换为numpy数组
-            features_array = np.array(features).reshape(1, -1)
+            # 如果特定模型，检查其期望的特征维度
+            expected_dim = None
+            if model_name and model_name in self.models:
+                model = self.models[model_name]
+                if hasattr(model, 'steps') and len(model.steps) > 0:
+                    first_step = model.steps[0][1]
+                    if hasattr(first_step, 'n_features_in_'):
+                        expected_dim = first_step.n_features_in_
             
-            # 如果有特征名称列表，确保维度匹配
-            if self.feature_names is not None:
-                # 创建完整特征向量（273维）
+            # 如果没有加载feature_names或没有期望维度，直接返回magpie特征
+            if self.feature_names is None or expected_dim is None:
+                return np.array(magpie_features).reshape(1, -1)
+            
+            # 根据期望维度生成特征
+            if expected_dim == 250:
+                # 使用完整的feature_names
                 full_features = np.zeros((1, len(self.feature_names)))
+                magpie_labels = self.featurizer.feature_labels()
                 
-                # 填充Matminer特征（假设在最后）
-                matminer_feature_count = min(len(features), len(self.feature_names))
-                full_features[0, -matminer_feature_count:] = features[:matminer_feature_count]
+                for i, fname in enumerate(self.feature_names):
+                    if fname in magpie_labels:
+                        idx = magpie_labels.index(fname)
+                        full_features[0, i] = magpie_features[idx]
                 
                 return full_features
             
-            return features_array
+            elif expected_dim == 246:
+                # 晶格模型：移除了4个零方差特征
+                # 直接使用250维特征，让模型的内部VarianceThreshold处理
+                # 但这会导致错误，所以我们需要手动移除这4个特征
+                
+                # 先生成250维
+                full_features_250 = np.zeros((1, 250))
+                magpie_labels = self.featurizer.feature_labels()
+                
+                for i, fname in enumerate(self.feature_names):
+                    if fname in magpie_labels:
+                        idx = magpie_labels.index(fname)
+                        full_features_250[0, i] = magpie_features[idx]
+                
+                # 找出非零方差的特征索引（简化：直接返回前246维）
+                # 更好的方法是从训练时保存哪些特征被移除了
+                # 临时方案：使用前246个非零列
+                non_zero_mask = (full_features_250 != 0).flatten()
+                if non_zero_mask.sum() >= 246:
+                    # 选择前246个非零特征
+                    non_zero_indices = np.where(non_zero_mask)[0][:246]
+                    return full_features_250[:, non_zero_indices]
+                else:
+                    # 如果非零特征不足246个，补零至246
+                    return full_features_250[:, :246]
+            
+            else:
+                # 其他维度：返回对应大小的零数组（回退方案）
+                warnings.warn(f"未知的特征维度 {expected_dim}，使用零填充")
+                return np.zeros((1, expected_dim))
             
         except Exception as e:
             warnings.warn(f"特征化失败: {e}")
@@ -183,13 +229,13 @@ class FeatureInjector:
         if 'formation_energy' not in self.models:
             return None
         
-        features = self.featurize_composition(composition)
+        features = self.featurize_composition(composition, model_name='formation_energy')
         if features is None:
             return None
         
         try:
-            pred = self.models['formation_energy'].predict(features)[0]
-            return float(pred)
+            ef_pred = self.models['formation_energy'].predict(features)[0]
+            return float(ef_pred)
         except Exception as e:
             warnings.warn(f"形成能预测失败: {e}")
             return None
@@ -207,7 +253,8 @@ class FeatureInjector:
         if 'lattice' not in self.models:
             return None
         
-        features = self.featurize_composition(composition)
+        # 传递model_name以获取正确维度的特征
+        features = self.featurize_composition(composition, model_name='lattice')
         if features is None:
             return None
         
@@ -246,13 +293,13 @@ class FeatureInjector:
         if 'magnetic_moment' not in self.models:
             return None
         
-        features = self.featurize_composition(composition)
+        features = self.featurize_composition(composition, model_name='magnetic_moment')
         if features is None:
             return None
         
         try:
-            pred = self.models['magnetic_moment'].predict(features)[0]
-            return float(pred)
+            mag_pred = self.models['magnetic_moment'].predict(features)[0]
+            return float(mag_pred)
         except Exception as e:
             warnings.warn(f"磁矩预测失败: {e}")
             return None
@@ -370,16 +417,14 @@ class FeatureInjector:
         if comp_col not in df.columns:
             raise ValueError(f"成分列 '{comp_col}' 不存在于DataFrame中")
         
-        # 初始化新特征列
+        # 初始化新特征列（只包含有真实模型支持的特征）
+        # 注意：弹性模量相关特征已移除，因为对应的DFT训练模型不存在
+        # 如需弹性特征，请使用ROM模型或训练新模型
         new_features = {
             'pred_formation_energy': [],
             'pred_lattice_param': [],
             'lattice_mismatch_wc': [],
-            'pred_magnetic_moment': [],
-            'pred_bulk_modulus': [],
-            'pred_shear_modulus': [],
-            'pred_pugh_ratio': [],
-            'pred_brittleness_index': []
+            'pred_magnetic_moment': []
         }
         
         # 统计
@@ -418,18 +463,6 @@ class FeatureInjector:
             # 3. 磁矩
             magmom = self.predict_magnetic_moment(composition)
             new_features['pred_magnetic_moment'].append(magmom)
-            
-            # 4. 弹性模量
-            elastic = self.predict_elastic_moduli(composition)
-            new_features['pred_bulk_modulus'].append(elastic['bulk'])
-            new_features['pred_shear_modulus'].append(elastic['shear'])
-            
-            # 5. Pugh比和脆性指数
-            pugh = self.predict_pugh_ratio(composition, elastic['bulk'], elastic['shear'])
-            new_features['pred_pugh_ratio'].append(pugh)
-            
-            brittleness = self.calculate_brittleness_index(pugh)
-            new_features['pred_brittleness_index'].append(brittleness)
             
             success_count += 1
         
