@@ -46,9 +46,56 @@ class FeatureInjector:
     并将这些属性作为新特征添加到数据集中
     """
     
-    # WC晶格常数（用于计算失配）
+    # WC晶格常数（保持向后兼容）
     WC_LATTICE_A = 2.906  # Å
     WC_LATTICE_C = 2.837  # Å
+    
+    # 陶瓷相晶格参数数据库（用于动态失配度计算）
+    CERAMIC_PARAMS = {
+        'WC': {
+            'structure': 'hexagonal',
+            'lattice_a': 2.906,
+            'lattice_c': 2.837,
+            'neighbor_distance': 2.906  # a轴最近邻距离
+        },
+        'TiC': {
+            'structure': 'fcc',
+            'lattice_a': 4.328,
+            'neighbor_distance': 4.328 / (2**0.5)  # 3.061 Å
+        },
+        'TiN': {
+            'structure': 'fcc',
+            'lattice_a': 4.242,
+            'neighbor_distance': 4.242 / (2**0.5)  # 3.000 Å
+        },
+        'Ti(C,N)': {
+            'structure': 'fcc',
+            'lattice_a': 4.285,  # 平均值
+            'neighbor_distance': 4.285 / (2**0.5)  # 3.030 Å
+        },
+        'TiCN': {  # 别名
+            'structure': 'fcc',
+            'lattice_a': 4.285,
+            'neighbor_distance': 4.285 / (2**0.5)
+        },
+        'VC': {
+            'structure': 'fcc',
+            'lattice_a': 4.166,
+            'neighbor_distance': 4.166 / (2**0.5)  # 2.946 Å
+        },
+        'NbC': {
+            'structure': 'fcc',
+            'lattice_a': 4.470,
+            'neighbor_distance': 4.470 / (2**0.5)  # 3.161 Å
+        },
+        'Cr3C2': {
+            'structure': 'orthorhombic',
+            'lattice_a': 5.53,
+            'lattice_b': 2.83,
+            'lattice_c': 11.48,
+            'neighbor_distance': 2.7  # 近似值
+        }
+    }
     
     def __init__(self, model_dir: str = "saved_models/proxy"):
         """
@@ -114,7 +161,8 @@ class FeatureInjector:
         print(f"\n📊 成功加载 {loaded_count}/{len(model_files)} 个模型")
         
         if loaded_count == 0:
-            raise RuntimeError("未能加载任何模型！请先训练辅助模型。")
+            warnings.warn("未能加载任何模型！Proxy特征预测will return None.")
+            print("⚠️  ModelX功能将受限，建议训练辅助模型")
     
     def _initialize_featurizer(self):
         """初始化Matminer特征化器"""
@@ -242,13 +290,16 @@ class FeatureInjector:
     
     def predict_lattice_parameter(self, composition: Dict[str, float]) -> Optional[float]:
         """
-        预测晶格常数
+        预测晶格常数（FCC结构）
+        
+        注意：模型输出的是 volume_per_atom (Å³/atom)，需要转换为 FCC 晶格常数
+        FCC晶胞包含4个原子，因此: a_FCC = (4 × V_atom)^(1/3)
         
         Args:
             composition: 成分字典
             
         Returns:
-            预测的晶格常数 (Å)
+            预测的FCC晶格常数 (Å)
         """
         if 'lattice' not in self.models:
             return None
@@ -259,36 +310,81 @@ class FeatureInjector:
             return None
         
         try:
-            # 预测体积，然后转换为晶格常数
-            volume_pred = self.models['lattice'].predict(features)[0]
-            # 假设立方结构: a = V^(1/3)
-            lattice_param = volume_pred ** (1/3)
-            return float(lattice_param)
+            # 模型预测：原子体积 (Å³/atom)
+            volume_per_atom = self.models['lattice'].predict(features)[0]
+            
+            # 转换为FCC晶格常数: a = (4 × V_atom)^(1/3)
+            # FCC晶胞包含4个原子，体积 V_cell = 4 × V_atom
+            lattice_param_fcc = (4 * volume_per_atom) ** (1/3)
+            
+            return float(lattice_param_fcc)
         except Exception as e:
             warnings.warn(f"晶格常数预测失败: {e}")
             return None
     
-    def calculate_lattice_mismatch(self, pred_lattice: float) -> float:
+    def calculate_lattice_mismatch(self, pred_lattice_fcc: float, ceramic_type: str = 'WC') -> float:
         """
-        计算与WC的晶格失配
+        计算FCC粘结相与陶瓷相的晶格失配
+        
+        使用最近邻距离比较（自动根据ceramic_type选择）
         
         Args:
-            pred_lattice: 预测的晶格常数
+            pred_lattice_fcc: 预测的FCC晶格常数 (Å)
+            ceramic_type: 陶瓷相类型（如'WC', 'TiC', 'TiN', 'Ti(C,N)'等）
+                         默认为'WC'以保持向后兼容
             
         Returns:
-            晶格失配百分比
+            晶格失配（分数形式，例如 0.05 表示 5%）
         """
-        return abs(pred_lattice - self.WC_LATTICE_A) / self.WC_LATTICE_A * 100
+        # FCC最近邻距离
+        neighbor_dist_fcc = pred_lattice_fcc / (2 ** 0.5)
+        
+        # 动态选择陶瓷相的最近邻距离
+        ceramic_type_clean = str(ceramic_type).strip()
+        ceramic_neighbor = None
+        
+        # 精确匹配
+        if ceramic_type_clean in self.CERAMIC_PARAMS:
+            ceramic_neighbor = self.CERAMIC_PARAMS[ceramic_type_clean]['neighbor_distance']
+        else:
+            # 模糊匹配（处理大小写）
+            ceramic_type_upper = ceramic_type_clean.upper()
+            for key in self.CERAMIC_PARAMS:
+                if key.upper() == ceramic_type_upper:
+                    ceramic_neighbor = self.CERAMIC_PARAMS[key]['neighbor_distance']
+                    break
+            
+            # 部分匹配（处理复合类型，如包含空格的情况）
+            if ceramic_neighbor is None:
+                for key in self.CERAMIC_PARAMS:
+                    if key.upper() in ceramic_type_upper or ceramic_type_upper in key.upper():
+                        ceramic_neighbor = self.CERAMIC_PARAMS[key]['neighbor_distance']
+                        warnings.warn(f"陶瓷类型'{ceramic_type}'部分匹配到'{key}'")
+                        break
+        
+        # 如果全部匹配失败，回退到WC
+        if ceramic_neighbor is None:
+            ceramic_neighbor = self.WC_LATTICE_A  # 2.906 Å
+            if ceramic_type_clean.upper() != 'WC':
+                warnings.warn(f"未知陶瓷类型'{ceramic_type}'，使用WC作为默认值")
+        
+        # 失配度
+        mismatch = abs(neighbor_dist_fcc - ceramic_neighbor) / ceramic_neighbor
+        
+        return float(mismatch)
     
     def predict_magnetic_moment(self, composition: Dict[str, float]) -> Optional[float]:
         """
-        预测磁矩
+        预测磁矩（每原子）
+        
+        注意：当前使用的模型已经过重新训练，直接输出归一化的磁矩值 (μB/atom)
+        因此无需额外的归一化处理
         
         Args:
-            composition: 成分字典
+            composition: 成分字典 {元素: 原子数}
             
         Returns:
-            预测的磁矩 (μB)
+            预测的磁矩 (μB/atom)
         """
         if 'magnetic_moment' not in self.models:
             return None
@@ -298,8 +394,11 @@ class FeatureInjector:
             return None
         
         try:
-            mag_pred = self.models['magnetic_moment'].predict(features)[0]
-            return float(mag_pred)
+            # 模型预测：直接输出归一化的磁矩 (μB/atom)
+            # 新训练的模型已经在训练时进行了归一化处理
+            mag_per_atom = self.models['magnetic_moment'].predict(features)[0]
+            
+            return float(mag_per_atom)
         except Exception as e:
             warnings.warn(f"磁矩预测失败: {e}")
             return None
@@ -392,6 +491,7 @@ class FeatureInjector:
     
     def inject_features(self, df: pd.DataFrame, 
                        comp_col: str = 'binder_composition',
+                       ceramic_type_col: str = 'Ceramic_Type',
                        verbose: bool = True) -> pd.DataFrame:
         """
         为DataFrame注入辅助模型预测的特征
@@ -399,6 +499,7 @@ class FeatureInjector:
         Args:
             df: 输入DataFrame
             comp_col: 成分列名（标准化后的）
+            ceramic_type_col: 陶瓷类型列名（用于动态失配度计算）
             verbose: 是否显示详细信息
             
         Returns:
@@ -410,12 +511,21 @@ class FeatureInjector:
             print("=" * 70)
             print(f"📊 输入数据: {df.shape}")
             print(f"🧪 成分列: {comp_col}")
+            print(f"🏺 陶瓷类型列: {ceramic_type_col}")
         
         df = df.copy()
         
         # 确保成分列存在
         if comp_col not in df.columns:
             raise ValueError(f"成分列 '{comp_col}' 不存在于DataFrame中")
+        
+        # 检查ceramic_type_col是否存在
+        has_ceramic_type = ceramic_type_col in df.columns
+        if not has_ceramic_type and verbose:
+            print(f"⚠️  未找到'{ceramic_type_col}'列，失配度计算将使用WC作为默认陶瓷相")
+        elif has_ceramic_type and verbose:
+            unique_ceramics = df[ceramic_type_col].dropna().unique()
+            print(f"✅ 检测到 {len(unique_ceramics)} 种陶瓷类型: {', '.join(map(str, unique_ceramics[:5]))}{'...' if len(unique_ceramics) > 5 else ''}")
         
         # 初始化新特征列（只包含有真实模型支持的特征）
         # 注意：弹性模量相关特征已移除，因为对应的DFT训练模型不存在
@@ -434,6 +544,21 @@ class FeatureInjector:
         # 遍历每一行
         for idx, row in df.iterrows():
             comp_str = row[comp_col]
+            
+            # 获取陶瓷类型
+            if has_ceramic_type:
+                ceramic_type_raw = row[ceramic_type_col] if pd.notna(row[ceramic_type_col]) else 'WC'
+                
+                # 处理多种硬质相的情况（用逗号分隔）
+                # 例如: "WC, TiC" -> "WC"
+                ceramic_type_str = str(ceramic_type_raw).strip()
+                if ',' in ceramic_type_str:
+                    # 选取第一个硬质相
+                    ceramic_type = ceramic_type_str.split(',')[0].strip()
+                else:
+                    ceramic_type = ceramic_type_str
+            else:
+                ceramic_type = 'WC'
             
             # 解析成分
             composition = self.composition_parser.parse(comp_str)
@@ -455,7 +580,8 @@ class FeatureInjector:
             new_features['pred_lattice_param'].append(lattice)
             
             if lattice is not None:
-                mismatch = self.calculate_lattice_mismatch(lattice)
+                # 传递ceramic_type进行动态失配度计算
+                mismatch = self.calculate_lattice_mismatch(lattice, ceramic_type)
                 new_features['lattice_mismatch_wc'].append(mismatch)
             else:
                 new_features['lattice_mismatch_wc'].append(np.nan)
@@ -465,6 +591,21 @@ class FeatureInjector:
             new_features['pred_magnetic_moment'].append(magmom)
             
             success_count += 1
+        
+        # 检查列名冲突并发出警告
+        existing_cols = []
+        for feature_name in new_features.keys():
+            if feature_name in df.columns:
+                existing_cols.append(feature_name)
+        
+        if existing_cols and verbose:
+            warnings.warn(
+                f"⚠️ 以下特征列已存在于DataFrame中，将被覆盖: {existing_cols}\n"
+                f"   如果这是非预期行为，请检查是否重复运行了特征注入步骤。"
+            )
+            print(f"\n⚠️ 警告: {len(existing_cols)} 个特征列将被覆盖:")
+            for col in existing_cols:
+                print(f"   - {col}")
         
         # 将新特征添加到DataFrame
         for feature_name, values in new_features.items():

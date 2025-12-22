@@ -83,34 +83,27 @@ def inject_physics_features(
     # 3. 计算衍生特征
     print("\n[Step 4/5] 计算衍生物理特征...")
     
-    # A. 晶格常数估算 (FCC假设)
-    if 'pred_lattice_param' in df_enhanced.columns:
-        # pred_lattice_param 是 volume_per_atom
-        # FCC: a = (4 * V_atom)^(1/3)
-        df_enhanced['calc_lattice_constant_fcc'] = (
-            4 * df_enhanced['pred_lattice_param']
-        ) ** (1/3)
-        
-        print(f"  ✓ 晶格常数 (FCC) 计算完成")
     
-    # B. 晶格失配度 (已包含在lattice_mismatch_wc中)
+    # B. 晶格失配度（已在FeatureInjector中正确计算）
     if 'lattice_mismatch_wc' in df_enhanced.columns:
-        print(f"  ✓ 晶格失配 vs WC 已计算")
+        print(f"  ✓ 晶格失配 vs WC 已计算（基于FCC最近邻距离）")
     
-    # C. 磁稳定性指标
+    
+    # C. 磁稳定性指标（基于归一化后的每原子磁矩）
     if 'pred_magnetic_moment' in df_enhanced.columns:
         df_enhanced['calc_mag_instability'] = df_enhanced['pred_magnetic_moment'].abs()
         
-        # 分类
+        # 分类（针对每原子磁矩，单位：μB/atom）
         df_enhanced['mag_category'] = pd.cut(
             df_enhanced['calc_mag_instability'],
-            bins=[0, 0.5, 2, np.inf],
+            bins=[0, 0.5, 1.5, np.inf],  # 调整bins以匹配μB/atom范围
             labels=['Low', 'Medium', 'High']
         )
         
-        print(f"  ✓ 磁稳定性分类完成")
+        print(f"  ✓ 磁稳定性分类完成（已归一化到每原子）")
     
-    # D. 稳定性等级（基于形成能）
+    
+    # D. 稳定性等级（基于形成能）+ 数据质量过滤
     if 'pred_formation_energy' in df_enhanced.columns:
         df_enhanced['stability_grade'] = pd.cut(
             df_enhanced['pred_formation_energy'],
@@ -118,7 +111,18 @@ def inject_physics_features(
             labels=['Excellent', 'Good', 'Fair', 'Poor']
         )
         
-        print(f"  ✓ 稳定性等级划分完成")
+        # 标记极不稳定的配方（可能需要在训练前过滤）
+        df_enhanced['is_unstable'] = df_enhanced['pred_formation_energy'] > 0.1
+        
+        unstable_count = df_enhanced['is_unstable'].sum()
+        if unstable_count > 0:
+            print(f"  ✓ 稳定性等级划分完成")
+            print(f"  ⚠️  检测到 {unstable_count} 个极不稳定配方 (Ef > 0.1 eV/atom)")
+            print(f"      建议在后续训练前过滤这些样本")
+        else:
+            print(f"  ✓ 稳定性等级划分完成")
+    
+    
     
     # E. 韧脆性判据（如果有Pugh比）
     if 'pred_pugh_ratio' in df_enhanced.columns:
@@ -128,12 +132,15 @@ def inject_physics_features(
         
         print(f"  ✓ 韧脆性判据完成")
     
+    
     # 4. 特征统计
     print("\n[Step 5/5] 特征统计汇总...")
     
     new_features = [col for col in df_enhanced.columns 
                    if col.startswith('pred_') or col.startswith('calc_') 
-                   or col in ['lattice_mismatch_wc', 'stability_grade', 'mag_category', 'ductility']]
+                   or col in ['lattice_mismatch_wc', 'stability_grade', 'mag_category', 
+                             'ductility', 'is_unstable']]
+    
     
     print(f"\n新增特征数量: {len(new_features)}")
     print("新增特征列表:")

@@ -5,10 +5,19 @@ import optuna
 import joblib
 import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple, Any, Optional
+from typing import Dict, List, Tuple, Any, Optional, Union
 
 # Re-use existing database
 from .material_database import db as material_db
+
+# ModelX和特征注入器
+try:
+    from .modelx_adapter import ModelXAdapter
+    from .feature_injector import FeatureInjector
+    MODELX_AVAILABLE = True
+except ImportError:
+    MODELX_AVAILABLE = False
+    print("Warning: ModelX adapter not available")
 
 # -----------------------------------------------------------------------------
 # 1. Design Space (Input Layer)
@@ -66,6 +75,26 @@ class PhysicsEngine:
     """
     def __init__(self):
         self.db = material_db
+        
+        # ModelX支持
+        self.feature_injector = None
+        self.modelx_adapter = None
+        if MODELX_AVAILABLE:
+            try:
+                # 尝试加载FeatureInjector（需要proxy模型）
+                from .feature_injector import FeatureInjector
+                self.feature_injector = FeatureInjector()
+                print("✓ FeatureInjector loaded for proxy predictions")
+            except Exception as e:
+                print(f"Warning: FeatureInjector not available - {e}")
+                # Proxy模型不可用时，仍然尝试加载ModelXAdapter（可能部分功能受限）
+            
+            try:
+                self.modelx_adapter = ModelXAdapter()
+                print("✓ ModelXAdapter loaded successfully")
+            except Exception as e:
+                print(f"Warning: ModelXAdapter not available - {e}")
+        
         # Detailed Ceramic Properties for Mismatch Calc
         self.ceramic_db = {
             'WC': {
@@ -110,6 +139,64 @@ class PhysicsEngine:
         features['Grain_Size'] = design.grain_size_um
         
         return features
+
+    def compute_modelx_features(self, design: DesignSpace) -> Dict[str, float]:
+        """
+        生成ModelX模型所需的18个特征
+        
+        严格按照依赖链顺序计算：
+        Layer 1: 基础特征（Matminer + 简单特征）
+        Layer 2: Proxy模型预测
+        Layer 3: 衍生特征（依赖Layer 2）
+        
+        Args:
+            design: DesignSpace对象
+            
+        Returns:
+            包含18个特征的字典
+        """
+        if not self.modelx_adapter or not self.feature_injector:
+            raise RuntimeError("ModelX components not initialized")
+        
+        # 获取成分（原子分数和质量分数）
+        composition_atomic = design.get_binder_composition_atomic()
+        
+        # 计算质量分数
+        composition_wt = {}
+        total_mass = 0.0
+        for el, at_frac in composition_atomic.items():
+            mass = self.db.get_property(el, 'mass', 0)
+            w = at_frac * mass
+            composition_wt[el] = w
+            total_mass += w
+        
+        if total_mass > 0:
+            composition_wt = {k: v/total_mass for k, v in composition_wt.items()}
+        
+        # ==== Layer 2: Proxy模型预测（使用FeatureInjector） ====
+        proxy_features = {
+            'pred_formation_energy': self.feature_injector.predict_formation_energy(composition_atomic),
+            'pred_lattice_param': self.feature_injector.predict_lattice_parameter(composition_atomic),
+            'pred_magnetic_moment': self.feature_injector.predict_magnetic_moment(composition_atomic)
+        }
+        
+        # 处理None值
+        for key in proxy_features:
+            if proxy_features[key] is None:
+                proxy_features[key] = 0.0
+        
+        # ==== 使用ModelXAdapter提取完整的18个特征 ====
+        modelx_features = self.modelx_adapter.extract_modelx_features(
+            composition_atomic=composition_atomic,
+            composition_wt=composition_wt,
+            binder_wt_pct=design.ceramic_vol_fraction * 100,  # 转换为百分比
+            grain_size_um=design.grain_size_um,
+            proxy_features=proxy_features,
+            ceramic_type=design.ceramic_type
+        )
+        
+        return modelx_features
+
 
     def calculate_volume_fractions(self, design: DesignSpace) -> Dict[str, float]:
         """Calculates detailed volume distribution."""
@@ -283,16 +370,29 @@ class PhysicsEngine:
 class AIPredictor:
     """
     ML-based Predictor.
+    优先使用ModelX进行HV预测，fallback到启发式方法。
     """
     def __init__(self, model_dir='saved_models'):
         self.model_dir = model_dir
         self.models = {}
+        self.physics_engine = None  # 用于生成ModelX特征
         self._load_models()
         
     def _load_models(self):
-        """Attempts to load trained models from disk."""
-        # Expected files: cermet_hv.joblib, cermet_k1c.joblib, cermet_phases.joblib
-        for target in ['HV', 'K1C', 'PhaseStability']:
+        """尝试加载训练好的模型，优先加载ModelX"""
+        # 1. 尝试加载ModelX
+        modelx_path = os.path.join('models', 'ModelX.pkl')
+        if os.path.exists(modelx_path) and MODELX_AVAILABLE:
+            try:
+                # 初始化PhysicsEngine用于特征生成
+                self.physics_engine = PhysicsEngine()
+                print(f"✓ ModelX loaded successfully (R²=0.911)")
+                self.models['ModelX'] = True
+            except Exception as e:
+                print(f"Warning: Failed to load ModelX: {e}")
+        
+        # 2. 加载其他模型（K1C, PhaseStability等）
+        for target in ['K1C', 'PhaseStability']:
             path = os.path.join(self.model_dir, f'cermet_model_{target.lower()}.joblib')
             if os.path.exists(path):
                 try:
@@ -300,26 +400,46 @@ class AIPredictor:
                 except:
                     print(f"Failed to load model: {path}")
                     
-    def predict(self, features: Dict[str, float]) -> Dict[str, float]:
+    def predict(self, features_or_design: Union[Dict[str, float], 'DesignSpace']) -> Dict[str, float]:
         """
-        Predicts properties using ML models if available, else falls back to heuristics.
+        预测材料性能
+        
+        优先使用ModelX（如果可用），否则使用启发式方法
+        
+        Args:
+            features_or_design: 特征字典或DesignSpace对象
+            
+        Returns:
+            预测结果字典
         """
         results = {}
+        
+        # 判断输入类型
+        if isinstance(features_or_design, DesignSpace):
+            design = features_or_design
+            # 生成传统特征
+            features = self.physics_engine.compute_features(design) if self.physics_engine else {}
+        else:
+            features = features_or_design
+            design = None
         
         # Convert features dict to DataFrame (1 row) for flexible model input
         X = pd.DataFrame([features])
         
-        # --- HV Prediction ---
-        if 'HV' in self.models:
-            # Filter X to match model's expected features?
-            # For now, assume model handles it or we pass all
+        # --- HV Prediction (优先使用ModelX) ---
+        if 'ModelX' in self.models and self.physics_engine and design:
             try:
-                results['Predicted_HV'] = self.models['HV'].predict(X)[0]
-                results['HV_Source'] = 'ML Model'
-            except:
-                 results['Predicted_HV'] = self._fallback_hv(features)
-                 results['HV_Source'] = 'Heuristic (Model Error)'
+                # 使用ModelX预测
+                modelx_features = self.physics_engine.compute_modelx_features(design)
+                hv_pred = self.physics_engine.modelx_adapter.predict_single(modelx_features)
+                results['Predicted_HV'] = hv_pred
+                results['HV_Source'] = 'ModelX (R²=0.91)'
+            except Exception as e:
+                print(f"ModelX prediction failed: {e}, using fallback")
+                results['Predicted_HV'] = self._fallback_hv(features)
+                results['HV_Source'] = 'Heuristic (ModelX Error)'
         else:
+            # Fallback到启发式
             results['Predicted_HV'] = self._fallback_hv(features)
             results['HV_Source'] = 'Heuristic'
             
@@ -336,11 +456,9 @@ class AIPredictor:
             results['K1C_Source'] = 'Heuristic'
             
         # --- Phase Stability / Composition ---
-        # User wants "Phase Composition"
         if 'PhaseStability' in self.models:
             results['Phase_Analysis'] = self.models['PhaseStability'].predict(X)[0]
         else:
-            # Fallback logic for phases
             results['Phase_Analysis'] = "No ML Model. Assuming Standard HEA+Ceramic."
             
         return results

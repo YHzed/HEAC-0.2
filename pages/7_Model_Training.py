@@ -44,13 +44,41 @@ if st.button("Load Data") or 'df_model' in st.session_state:
         
         st.success(f"✓ 加载了 {df.shape[0]} 行 × {df.shape[1]} 列")
         
-        # 识别目标变量
-        target_candidates = ['HV, kgf/mm2', 'TRS, MPa', 'KIC, MPa·m1/2']
-        available_targets = [t for t in target_candidates if t in df.columns]
+        # 智能识别目标变量（支持多种格式）
+        # 定义目标变量的关键词及其变体
+        target_mappings = {
+            'Hardness': ['HV, kgf/mm2', 'HV_kgf_mm2', 'HV', 'Hardness'],
+            'Strength': ['TRS, MPa', 'TRS_MPa', 'TRS', 'Strength'],
+            'Toughness': ['KIC, MPa·m1/2', 'KIC_MPa_m', 'KIC', 'Toughness']
+        }
+        
+        available_targets = []
+        target_info = []
+        
+        for category, variants in target_mappings.items():
+            for variant in variants:
+                if variant in df.columns:
+                    # 检查缺失值比例
+                    missing_pct = df[variant].isna().sum() / len(df) * 100
+                    valid_count = df[variant].notna().sum()
+                    
+                    # 只保留缺失率<50%且有效值>10的目标变量
+                    if missing_pct < 50 and valid_count >= 10:
+                        available_targets.append(variant)
+                        target_info.append(f"{variant} (有效值: {valid_count}, 缺失: {missing_pct:.1f}%)")
+                        break  # 找到一个有效的就跳出
+                    else:
+                        st.warning(f"⚠️ 跳过 `{variant}`: 缺失率 {missing_pct:.1f}% 过高或有效值不足")
         
         if available_targets:
             st.session_state.available_targets = available_targets
-            st.info(f"可用目标变量: {', '.join(available_targets)}")
+            st.success(f"✓ 找到 {len(available_targets)} 个可用目标变量")
+            with st.expander("📊 目标变量详情"):
+                for info in target_info:
+                    st.write(f"- {info}")
+        else:
+            st.error("⚠️ 无可用目标变量！请检查数据文件。")
+            st.info("提示：系统会自动跳过缺失率>50%或有效值<10的目标变量。")
         
         with st.expander("📊 数据预览"):
             st.dataframe(df.head())

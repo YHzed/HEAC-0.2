@@ -75,6 +75,30 @@ st.divider()
 if file_path and os.path.exists(file_path):
     st.success(f"✓ 当前文件: `{os.path.basename(file_path)}`")
     
+    # 数据处理配置选项
+    st.divider()
+    st.subheader("⚙️ 数据处理配置")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        duplicate_col_handling = st.radio(
+            "重复列处理策略",
+            options=["自动合并", "保留新值", "保留原值", "保留全部（添加后缀）"],
+            index=1,  # 默认"保留新值"
+            help="当原始数据和解析结果存在同名列时的处理方式"
+        )
+    
+    with col2:
+        st.markdown("""\n**策略说明：**
+        - **自动合并**: 智能合并同名列的数据
+        - **保留新值**: 删除原始列，使用解析后的新值
+        - **保留原值**: 保留原始数据，忽略解析的新值
+        - **保留全部**: 为新列添加后缀 `_new`
+        """)
+    
+    st.divider()
+    
     if st.button("🚀 Process HEA Data"):
         try:
             # Read file based on extension
@@ -87,107 +111,179 @@ if file_path and os.path.exists(file_path):
             # Initialize Processor
             processor = MaterialProcessor()
             
-            # Identify Composition Column
+            # ========== 智能列名识别 ==========
             cols = df.columns.tolist()
+            
+            # 识别成分列
             comp_col = next((c for c in cols if 'composition' in c.lower() or 'formula' in c.lower()), None)
             
-            if comp_col:
-                st.info(f"Processing column: **{comp_col}**")
+            # 识别专有列（优先使用这些列）
+            def find_column(variants):
+                """查找匹配的列名（不区分大小写）"""
+                for col in cols:
+                    col_lower = col.lower().strip()
+                    for variant in variants:
+                        if variant.lower() in col_lower or col_lower in variant.lower():
+                            return col
+                return None
+            
+            # 粘结相成分列
+            binder_comp_col = find_column(['binder_composition', 'binder_comp', 'binder composition', 'binder', 'Binder_Atomic_Formula'])
+            
+            # 粘结相质量分数列
+            binder_wt_col = find_column(['binder_wt_pct', 'binder wt%', 'binder, wt-%', 'binder weight'])
+            
+            # 硬质相类型列
+            ceramic_type_col = find_column(['ceramic_type', 'ceramic type', 'hard phase', 'ceramic'])
+            
+            # 硬质相质量分数列
+            ceramic_wt_col = find_column(['ceramic_wt_pct', 'ceramic wt%', 'ceramic, wt-%', 'ceramic weight'])
+            
+            # 显示识别到的列
+            st.info(f"""📋 **识别到的列**:
+            - 成分字符串: `{comp_col}`
+            - 粘结相成分: `{binder_comp_col}`
+            - 粘结相质量%: `{binder_wt_col}`
+            - 硬质相类型: `{ceramic_type_col}`
+            - 硬质相质量%: `{ceramic_wt_col}`
+            """)
+            
+            if comp_col or ceramic_type_col:
+                # 导入HEADataProcessor（可能用于解析）
+                from core import HEADataProcessor
+                processor_hea = HEADataProcessor()
                 
-                # Custom Parser for Cermet Strings (e.g. "WC-10Co", "b WC 25 Co")
-                def parse_cermet_row(row):
-                    raw = str(row[comp_col]).strip()
+                # 辅助函数：安全转换为浮点数
+                def safe_float(val, default=None):
+                    """安全转换为浮点数"""
+                    if pd.isna(val):
+                        return default
+                    try:
+                        s = str(val).strip()
+                        if not s or s == '-' or s.lower() == 'nan':
+                            return default
+                        return float(s)
+                    except:
+                        return default
+                
+                # 辅助函数：解析粘结相成分字符串为字典
+                def parse_binder_comp_string(comp_str):
+                    """解析粘结相成分字符串为原子分数字典"""
+                    if pd.isna(comp_str) or not comp_str:
+                        return None
                     
-                    # Common Hard Phases
-                    hard_phases = ['WC', 'TiC', 'Ti(C,N)', 'TiCN', 'TaC', 'NbC', 'Cr3C2', 'VC', 'Mo2C']
-                    # Common Binder Elements
-                    binders = ['Co', 'Ni', 'Fe', 'Cr', 'Mo', 'Al', 'V', 'Ti', 'Mn']
-                    
-                    current_hard = 'WC' # Default
-                    hard_amount = 0.0
-                    binder_comp = {}
-                    
-                    # Pre-processing cleanup
-                    # Remove 'b ' prefix if present (from user image)
-                    if raw.lower().startswith('b '):
-                        raw = raw[2:].strip()
-                        
-                    # Split by separators (-, space, +)
-                    import re
-                    tokens = re.split(r'[+\-\s]+', raw)
-                    
-                    total_binder_wt = 0.0
-                    
-                    # Logic: scan tokens
-                    for i, token in enumerate(tokens):
-                        if not token: continue
-                        
-                        # Check ceramic
-                        is_ceramic = False
-                        for hp in hard_phases:
-                            if hp.lower() == token.lower() or hp.lower() in token.lower(): # Exact match preferred or containment
-                                current_hard = hp
-                                is_ceramic = True
-                                # Look ahead/behind for number? 
-                                # In "WC 25 Co", "25" is next.
-                                break
-                        if is_ceramic: continue
-                        
-                        # Check Number
-                        # If token is number, look ahead for Binder Element
+                    try:
+                        # 尝试使用CompositionParser
+                        from core.data_standardizer import CompositionParser
+                        parser = CompositionParser()
+                        result = parser.parse(str(comp_str), extract_binder_only=False)
+                        return result
+                    except:
+                        # 如果解析失败，尝试使用pymatgen直接解析
                         try:
-                            val = float(token)
-                            # Valid number. Check next token for Element?
-                            if i + 1 < len(tokens):
-                                next_tok = tokens[i+1]
-                                if next_tok in binders:
-                                    # "25 Co" case
-                                    binder_comp[next_tok] = binder_comp.get(next_tok, 0.0) + val
-                                    total_binder_wt += val
-                                    continue
-                        except ValueError:
+                            from pymatgen.core import Composition
+                            comp = Composition(str(comp_str))
+                            total = sum(comp.get_el_amt_dict().values())
+                            if total > 0:
+                                return {str(el): amt/total for el, amt in comp.get_el_amt_dict().items()}
+                        except:
                             pass
-
-                        # Check Binder+Number combined (10Co)
-                        match_pre = re.match(r'^(\d+(?:\.\d+)?)([A-Za-z]+)$', token)
-                        match_post = re.match(r'^([A-Za-z]+)(\d+(?:\.\d+)?)$', token)
-                        
-                        if match_pre:
-                            b_amt = float(match_pre.group(1))
-                            b_el = match_pre.group(2)
-                            if b_el in binders:
-                                binder_comp[b_el] = binder_comp.get(b_el, 0.0) + b_amt
-                                total_binder_wt += b_amt
-                        elif match_post:
-                            b_el = match_post.group(1)
-                            b_amt = float(match_post.group(2))
-                            if b_el in binders:
-                                binder_comp[b_el] = binder_comp.get(b_el, 0.0) + b_amt
-                                total_binder_wt += b_amt
-                             
-                    # Calculate Hard Phase Amount if missing
-                    # If we have binder weights (e.g. 10+5=15), assume remainder is hard phase (85)
-                    if hard_amount == 0 and total_binder_wt > 0:
-                        hard_amount = 100.0 - total_binder_wt
+                    return None
+                
+                # ========== 新的解析逻辑：优先使用原始列 ==========
+                def parse_cermet_row(row):
+                    """
+                    优先从原始数据列读取，仅在必要时解析成分字符串
                     
-                    # Normalize Binder
-                    normalized_binder = {}
-                    if total_binder_wt > 0:
-                        normalized_binder = {k: v/total_binder_wt for k, v in binder_comp.items()}
-                    else:
-                        normalized_binder = {'Co': 1.0} # Default/Err
-                        
-                    # ⚠️ 重要：体积分数计算
-                    # 不能简单地将重量分数当作体积分数！
-                    # Ceramic_Vol_Frac 应该从 Binder vol-% 列计算
-                    # 这里先返回重量分数，后续会从原始列中读取正确的体积分数
+                    优先级：
+                    1. 直接从专有列读取（Ceramic_Type, Binder_Composition等）
+                    2. 解析成分字符串（使用HEADataProcessor）
+                    3. 如果都失败，返回None（不使用默认值）
+                    """
+                    # ========== 优先级1：直接读取原始列 ==========
+                    ceramic_from_col = row.get(ceramic_type_col) if ceramic_type_col else None
+                    ceramic_wt_from_col = safe_float(row.get(ceramic_wt_col)) if ceramic_wt_col else None
+                    binder_comp_from_col = row.get(binder_comp_col) if binder_comp_col else None
+                    binder_wt_from_col = safe_float(row.get(binder_wt_col)) if binder_wt_col else None
                     
-                    return {
-                        'Ceramic_Type': current_hard,
-                        'Ceramic_Wt_Pct': hard_amount,
-                        'Binder_Composition': normalized_binder,
-                        'Binder_Wt_Pct': total_binder_wt  # 添加粘结相重量分数
-                    }
+                    # 检查是否有足够的原始列数据
+                    has_ceramic_data = ceramic_from_col and pd.notna(ceramic_from_col) and str(ceramic_from_col).strip()
+                    has_binder_comp = binder_comp_from_col and pd.notna(binder_comp_from_col) and str(binder_comp_from_col).strip()
+                    
+                    if has_ceramic_data and has_binder_comp:
+                        # 所有关键列都存在，直接使用（最可靠）
+                        ceramic_type_str = str(ceramic_from_col).strip()
+                        
+                        # 解析粘结相成分字符串
+                        binder_dict = parse_binder_comp_string(binder_comp_from_col)
+                        if not binder_dict:
+                            # 如果解析失败，尝试回退到HEADataProcessor
+                            pass  # 继续到优先级2
+                        else:
+                            # 成功从原始列读取
+                            return {
+                                'Ceramic_Type': ceramic_type_str,
+                                'Ceramic_Wt_Pct': ceramic_wt_from_col if ceramic_wt_from_col is not None else 90.0,
+                                'Binder_Composition': binder_dict,
+                                'Binder_Wt_Pct': binder_wt_from_col if binder_wt_from_col is not None else 10.0
+                            }
+                    
+                    # ========== 优先级2：解析成分字符串 ==========
+                    if comp_col and row.get(comp_col):
+                        # 获取粘结相体积分数（如果有）
+                        binder_vol_pct = None
+                        for c in df.columns:
+                            if 'binder' in c.lower() and 'vol' in c.lower():
+                                try:
+                                    val = row[c]
+                                    if pd.notna(val) and str(val).strip() != '-':
+                                        binder_vol_pct = float(val)
+                                        break
+                                except:
+                                    pass
+                        
+                        # 使用HEADataProcessor解析
+                        result = processor_hea.parse_composition_advanced(
+                            row[comp_col],
+                            binder_vol_pct=binder_vol_pct
+                        )
+                        
+                        if result and result.get('binder_wt_pct') is not None:
+                            # 提取硬质相类型
+                            ceramic_elements = result.get('ceramic_elements', {})
+                            
+                            if ceramic_elements and len(ceramic_elements) > 0:
+                                # 过滤掉空键
+                                valid_ceramics = {k: v for k, v in ceramic_elements.items() if k and k.strip()}
+                                if valid_ceramics:
+                                    ceramic_type = ', '.join(valid_ceramics.keys())
+                                else:
+                                    ceramic_type = None  # 不使用默认值
+                            else:
+                                ceramic_type = None  # 不使用默认值
+                            
+                            # 如果ceramic_type仍然无效，尝试从原始列读取
+                            if not ceramic_type and has_ceramic_data:
+                                ceramic_type = str(ceramic_from_col).strip()
+                            
+                            # 使用原子分数作为Binder_Composition
+                            binder_atomic_comp = result.get('binder_atomic_comp', {})
+                            if not binder_atomic_comp and result.get('binder_elements'):
+                                total = sum(result['binder_elements'].values())
+                                if total > 0:
+                                    binder_atomic_comp = {k: v/total for k, v in result['binder_elements'].items()}
+                            
+                            if ceramic_type and binder_atomic_comp:
+                                return {
+                                    'Ceramic_Type': ceramic_type,
+                                    'Ceramic_Wt_Pct': max(0, min(100, 100 - result.get('binder_wt_pct', 10.0))),
+                                    'Binder_Composition': binder_atomic_comp,
+                                    'Binder_Wt_Pct': max(0, min(100, result.get('binder_wt_pct', 10.0)))
+                                }
+                    
+                    # ========== 优先级3：都失败，返回None ==========
+                    # 不使用默认值，让后续处理决定如何处理无效行
+                    return None
 
                 # Apply Parsing
                 with st.spinner("Parsing Composition Strings..."):
@@ -222,7 +318,48 @@ if file_path and os.path.exists(file_path):
                         parsed_df['Ceramic_Vol_Frac'] = parsed_df['Ceramic_Wt_Pct'] / 100.0
                         parsed_df['Binder_Vol_Pct'] = parsed_df['Binder_Wt_Pct']
                     
+                    # 处理重复列（根据用户选择）
+                    duplicate_cols = set(df.columns) & set(parsed_df.columns)
+                    
+                    if duplicate_cols:
+                        st.info(f"📋 发现 {len(duplicate_cols)} 个重复列: {list(duplicate_cols)}")
+                        st.info(f"📌 使用策略: **{duplicate_col_handling}**")
+                        
+                        if duplicate_col_handling == "自动合并":
+                            # 使用data_standardizer的合并功能
+                            from core.data_standardizer import data_standardizer
+                            # 先合并，然后添加parsed_df中的新列
+                            for col in duplicate_cols:
+                                # 合并逻辑：优先使用非空值
+                                df[col] = df[col].fillna(parsed_df[col])
+                                # 从parsed_df中移除已处理的列
+                                parsed_df = parsed_df.drop(columns=[col])
+                            st.success(f"✓ 已合并 {len(duplicate_cols)} 个重复列")
+                        
+                        elif duplicate_col_handling == "保留新值":
+                            # 删除原始列，保留解析后的新值
+                            df = df.drop(columns=list(duplicate_cols))
+                            st.success(f"✓ 已删除原始列，将使用解析后的新值")
+                        
+                        elif duplicate_col_handling == "保留原值":
+                            # 保留原始数据，从parsed_df中移除重复列
+                            parsed_df = parsed_df.drop(columns=list(duplicate_cols))
+                            st.success(f"✓ 已保留原始列，忽略解析的新值")
+                        
+                        else:  # "保留全部（添加后缀）"
+                            # 为parsed_df中的重复列添加"_new"后缀
+                            rename_dict = {col: f"{col}_new" for col in duplicate_cols}
+                            parsed_df = parsed_df.rename(columns=rename_dict)
+                            st.success(f"✓ 已为新列添加 '_new' 后缀")
+                    
+                    # 合并数据
                     df = pd.concat([df, parsed_df], axis=1)
+                    
+                    # 最终安全检查：如果仍有重复列名，保留第一个
+                    if df.columns.duplicated().any():
+                        duplicated_list = df.columns[df.columns.duplicated()].tolist()
+                        st.warning(f"⚠️ 仍发现重复列名: {duplicated_list}，保留第一个出现的列")
+                        df = df.loc[:, ~df.columns.duplicated(keep='first')]
                 
                 st.write("Parsed Composition Preview:", df[['Ceramic_Type', 'Ceramic_Wt_Pct', 'Binder_Composition']].head())
                 
@@ -240,17 +377,34 @@ if file_path and os.path.exists(file_path):
                     binder_compositions = []
                     
                     for idx in df.index:
-                        # 获取硬质相类型（从 parsed_df 中的 dict 对象，不是字符串）
-                        ceramic_type = parsed_df.loc[idx, 'Ceramic_Type']
+                        # 获取硬质相类型（注意：合并后从df中读取）
+                        ceramic_type = df.loc[idx, 'Ceramic_Type']
                         
                         # 获取粘结相成分（dict 对象）
-                        binder_comp_dict = parsed_df.loc[idx, 'Binder_Composition']
+                        binder_comp_dict = df.loc[idx, 'Binder_Composition']
                         
                         # 创建硬质相 Composition
                         try:
-                            if pd.notna(ceramic_type) and ceramic_type:
-                                ceramic_compositions.append(Composition(ceramic_type))
+                            # 验证ceramic_type是否有效（非空且包含字母）
+                            if pd.notna(ceramic_type) and isinstance(ceramic_type, str):
+                                ceramic_type_clean = str(ceramic_type).strip()
+                                
+                                # 处理多硬质相情况（如"WC, NbC"）
+                                if ',' in ceramic_type_clean:
+                                    # 取第一个硬质相（主要硬质相）
+                                    main_ceramic = ceramic_type_clean.split(',')[0].strip()
+                                    ceramic_type_clean = main_ceramic
+                                
+                                # 确保至少包含一个字母（有效的化学式）
+                                if ceramic_type_clean and any(c.isalpha() for c in ceramic_type_clean):
+                                    ceramic_compositions.append(Composition(ceramic_type_clean))
+                                else:
+                                    # 无效的ceramic_type，标记为None
+                                    st.warning(f"Row {idx}: Invalid ceramic type '{ceramic_type}', 将跳过此行")
+                                    ceramic_compositions.append(None)
                             else:
+                                # ceramic_type为空或非字符串，标记为None
+                                st.warning(f"Row {idx}: Ceramic_Type 缺失或无效，将跳过此行")
                                 ceramic_compositions.append(None)
                         except Exception as e:
                             st.warning(f"Row {idx}: Failed to create ceramic composition - {e}")
@@ -258,12 +412,28 @@ if file_path and os.path.exists(file_path):
                         
                         # 创建粘结相 Composition
                         try:
-                            if isinstance(binder_comp_dict, dict) and binder_comp_dict:
-                                binder_compositions.append(Composition(binder_comp_dict))
-                            else:
+                            # 详细的数据有效性检查
+                            if binder_comp_dict is None:
                                 binder_compositions.append(None)
+                            elif not isinstance(binder_comp_dict, dict):
+                                binder_compositions.append(None)
+                            elif not binder_comp_dict:  # 空字典
+                                binder_compositions.append(None)
+                            else:
+                                # 检查字典值是否有效
+                                valid_dict = {}
+                                for elem, frac in binder_comp_dict.items():
+                                    if elem and str(elem).strip() and pd.notna(frac):
+                                        try:
+                                            valid_dict[str(elem).strip()] = float(frac)
+                                        except:
+                                            pass
+                                
+                                if valid_dict:
+                                    binder_compositions.append(Composition(valid_dict))
+                                else:
+                                    binder_compositions.append(None)
                         except Exception as e:
-                            st.warning(f"Row {idx}: Failed to create binder composition - {e}")
                             binder_compositions.append(None)
                     
                     df['ceramic_comp'] = ceramic_compositions
@@ -419,9 +589,9 @@ if file_path and os.path.exists(file_path):
                         else:
                             valid_df['Grain_Size_um'] = 1.0
                         
-                        # Add ceramic info
-                        valid_df['Ceramic_Type'] = parsed_df.loc[valid_df.index, 'Ceramic_Type']
-                        valid_df['Ceramic_Wt_Pct'] = parsed_df.loc[valid_df.index, 'Ceramic_Wt_Pct']
+                        # Add ceramic info（从df中读取，因为parsed_df可能已被修改）
+                        valid_df['Ceramic_Type'] = df.loc[valid_df.index, 'Ceramic_Type']
+                        valid_df['Ceramic_Wt_Pct'] = df.loc[valid_df.index, 'Ceramic_Wt_Pct']
                         
                         st.success("Added process parameters and ceramic info")
                     

@@ -6,12 +6,8 @@ import os
 from datetime import datetime
 import io
 
-# 添加scripts目录到路径
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
-from process_hea_xlsx import HEADataProcessor
-
 # 统一导入core模块
-from core import get_text, initialize_session_state
+from core import get_text, initialize_session_state, HEADataProcessor
 
 # ==============================================================================
 # INITIALIZATION

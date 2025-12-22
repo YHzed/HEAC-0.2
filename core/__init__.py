@@ -10,6 +10,7 @@ from .hea_cermet import MaterialProcessor
 # === 数据库和数据管理 ===
 from .material_database import MaterialDatabase, db
 from .dataset_manager import DatasetManager
+from .hea_data_processor import HEADataProcessor
 
 # === 数据处理和分析 ===
 try:
@@ -75,6 +76,7 @@ __all__ = [
     'MaterialDatabase',
     'db',
     'DatasetManager',
+    'HEADataProcessor',
     
     # 数据处理和分析
     'DataProcessor',

@@ -11,6 +11,9 @@ import sys
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # Core模块
 from core import (
@@ -21,6 +24,6 @@ from core import (
 
 __all__ = [
     'os', 'sys',
-    'st', 'pd', 'px',
+    'st', 'pd', 'px', 'np', 'plt', 'sns',
     'get_text', 'initialize_session_state', 'ActivityLogger'
 ]

@@ -209,14 +209,21 @@ with tab_single:
             st.subheader("3. AI Prediction System")
             
             predictor = AIPredictor()
-            preds = predictor.predict(features)
+            # 传递design对象以支持ModelX预测
+            preds = predictor.predict(design)
             
             # Performance Metrics
             m1, m2 = st.columns(2)
             
             # HV
             hv_src = preds.get('HV_Source', 'Unknown')
-            delta_hv = "ML" if "ML" in hv_src else "Heuristic"
+            # 根据来源设置delta标签
+            if 'ModelX' in hv_src:
+                delta_hv = "🎯 ModelX"
+            elif "ML" in hv_src:
+                delta_hv = "ML"
+            else:
+                delta_hv = "Heuristic"
             m1.metric(t('pred_hv'), f"{preds['Predicted_HV']:.0f} HV", delta=delta_hv, help=f"Source: {hv_src}")
             
             # K1C
@@ -240,10 +247,14 @@ with tab_inverse:
     st.header(t('header_inverse'))
     st.info(t('inverse_goal'))
     
+    # 优化参数
+    n_trials = st.slider("优化迭代次数 (Trials)", 20, 100, 50, 10, 
+                         help="使用ModelX时建议50+次迭代以充分探索设计空间")
+    
     if st.button(t('run_opt'), type="primary"):
         with st.spinner(t('opt_running')):
             optimizer = InverseOptimizer()
-            best_trials = optimizer.optimize(n_trials=20)
+            best_trials = optimizer.optimize(n_trials=n_trials)
             
             st.success(t('opt_success').format(len(best_trials)))
             

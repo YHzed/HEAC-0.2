@@ -39,10 +39,31 @@ if st.button("Load Data") or 'df_original' in st.session_state:
         st.success(f"✓ 加载了 {df.shape[0]} 行 × {df.shape[1]} 列数据")
         st.dataframe(df.head())
         
-        # 识别目标变量
-        target_candidates = ['HV, kgf/mm2', 'TRS, MPa', 'KIC, MPa·m1/2']
-        available_targets = [t for t in target_candidates if t in df.columns]
-        st.info(f"可用目标变量: {', '.join(available_targets)}")
+        # 智能识别目标变量（支持多种格式）
+        target_mappings = {
+            'Hardness': ['HV, kgf/mm2', 'HV_kgf_mm2', 'HV', 'Hardness'],
+            'Strength': ['TRS, MPa', 'TRS_MPa', 'TRS', 'Strength'],
+            'Toughness': ['KIC, MPa·m1/2', 'KIC_MPa_m', 'KIC', 'Toughness']
+        }
+        
+        available_targets = []
+        for category, variants in target_mappings.items():
+            for variant in variants:
+                if variant in df.columns:
+                    # 检查缺失值比例
+                    missing_pct = df[variant].isna().sum() / len(df) * 100
+                    valid_count = df[variant].notna().sum()
+                    
+                    if missing_pct < 50 and valid_count >= 10:
+                        available_targets.append(variant)
+                        break
+                    else:
+                        st.warning(f"⚠️ 跳过 `{variant}`: 缺失率 {missing_pct:.1f}% 过高")
+        
+        if available_targets:
+            st.success(f"✓ 找到 {len(available_targets)} 个可用目标变量: {', '.join(available_targets)}")
+        else:
+            st.error("⚠️ 无可用目标变量！")
         
     except Exception as e:
         st.error(f"加载失败: {e}")
@@ -186,9 +207,27 @@ st.header("🧹 Step 3: Data Pre-cleaning")
 if 'df_composite' in st.session_state:
     df_work = st.session_state.df_composite.copy()
     
-    # 选择目标变量
-    target_candidates = ['HV, kgf/mm2', 'TRS, MPa', 'KIC, MPa·m1/2']
-    available_targets = [t for t in target_candidates if t in df_work.columns]
+    # 智能识别目标变量
+    target_mappings = {
+        'Hardness': ['HV, kgf/mm2', 'HV_kgf_mm2', 'HV', 'Hardness'],
+        'Strength': ['TRS, MPa', 'TRS_MPa', 'TRS', 'Strength'],
+        'Toughness': ['KIC, MPa·m1/2', 'KIC_MPa_m', 'KIC', 'Toughness']
+    }
+    
+    available_targets = []
+    for category, variants in target_mappings.items():
+        for variant in variants:
+            if variant in df_work.columns:
+                missing_pct = df_work[variant].isna().sum() / len(df_work) * 100
+                valid_count = df_work[variant].notna().sum()
+                
+                if missing_pct < 50 and valid_count >= 10:
+                    available_targets.append(variant)
+                    break
+    
+    if not available_targets:
+        st.error("⚠️ 无可用目标变量！请先加载数据。")
+        st.stop()
     
     selected_target = st.selectbox(
         "🎯 选择目标变量（Target）用于特征优化",
@@ -212,7 +251,7 @@ if 'df_composite' in st.session_state:
             numeric_cols = df_clean.select_dtypes(include=['number']).columns
             
             # 移除目标变量
-            feature_cols = [c for c in numeric_cols if c not in target_candidates]
+            feature_cols = [c for c in numeric_cols if c not in available_targets]
             
             X = df_clean[feature_cols]
             y = df_clean[selected_target]
@@ -286,9 +325,26 @@ if 'X_clean' in st.session_state:
         y = st.session_state.y_clean
         
         with st.spinner("执行分层聚类..."):
+            # 定义关键物理特征（始终保留）
+            critical_physics_features = [
+                'pred_formation_energy',
+                'pred_lattice_param',
+                'lattice_mismatch_wc',
+                'pred_magnetic_moment'
+            ]
+            
+            # 识别实际存在的关键物理特征
+            existing_critical_features = [f for f in critical_physics_features if f in X.columns]
+            
+            if existing_critical_features:
+                st.info(f"🔒 保护关键物理特征（不参与聚类，自动保留）: {', '.join(existing_critical_features)}")
+            
+            # 从特征集中排除关键物理特征，只对其他特征进行聚类
+            X_for_clustering = X.drop(columns=existing_critical_features, errors='ignore')
+            
             # 1. 计算Spearman相关性矩阵
-            st.write("⏳ 计算Spearman相关性...")
-            corr_matrix = X.corr(method='spearman').abs()
+            st.write(f"⏳ 计算Spearman相关性（{len(X_for_clustering.columns)} 个特征）...")
+            corr_matrix = X_for_clustering.corr(method='spearman').abs()
             
             # 2. 转换为距离矩阵
             distance_matrix = 1 - corr_matrix
@@ -304,7 +360,7 @@ if 'X_clean' in st.session_state:
             fig, ax = plt.subplots(figsize=(20, 8))
             dendrogram(
                 linkage_matrix,
-                labels=X.columns,
+                labels=X_for_clustering.columns,
                 leaf_rotation=90,
                 leaf_font_size=8,
                 ax=ax
@@ -331,12 +387,12 @@ if 'X_clean' in st.session_state:
             cluster_info = []
             
             for cluster_id in np.unique(clusters):
-                cluster_features = X.columns[clusters == cluster_id].tolist()
+                cluster_features = X_for_clustering.columns[clusters == cluster_id].tolist()
                 
                 # 计算每个特征与目标的相关性
                 correlations = {}
                 for feat in cluster_features:
-                    corr, _ = spearmanr(X[feat], y)
+                    corr, _ = spearmanr(X_for_clustering[feat], y)
                     correlations[feat] = abs(corr)
                 
                 # 选择相关性最高的特征
@@ -351,14 +407,29 @@ if 'X_clean' in st.session_state:
                     'All_Features': ', '.join(cluster_features[:3]) + ('...' if len(cluster_features) > 3 else '')
                 })
             
+            # 添加关键物理特征到选择列表
+            selected_features.extend(existing_critical_features)
+            
             st.session_state.selected_features_gbfs = selected_features
+            st.session_state.critical_physics_features = existing_critical_features
             st.session_state.cluster_info = pd.DataFrame(cluster_info)
             
-            st.success(f"✅ GBFS完成！从 {X.shape[1]} 个特征中选出 {len(selected_features)} 个代表特征")
+            st.success(f"""
+            ✅ GBFS完成！
+            - 聚类筛选: {len(selected_features) - len(existing_critical_features)} 个特征
+            - 关键物理特征: {len(existing_critical_features)} 个（自动保留）
+            - **总计: {len(selected_features)} 个特征**
+            """)
             
             # 显示聚类信息
             with st.expander("📊 查看聚类详情"):
                 st.dataframe(st.session_state.cluster_info)
+            
+            # 显示关键物理特征
+            if existing_critical_features:
+                with st.expander("🔒 自动保留的关键物理特征"):
+                    for feat in existing_critical_features:
+                        st.write(f"- ✨ {feat}")
 
 # ====================
 # 5. RFECV进一步优化
@@ -400,7 +471,7 @@ if 'selected_features_gbfs' in st.session_state:
             
             optimal_features = X_selected.columns[rfecv.support_].tolist()
             
-            st.session_state.optimal_features = optimal_features
+            st.session_state.optimal_features_rfecv = optimal_features
             st.session_state.rfecv = rfecv
             
             st.success(f"✅ RFECV完成！最优特征数: {len(optimal_features)}")
@@ -421,8 +492,256 @@ if 'selected_features_gbfs' in st.session_state:
             st.pyplot(fig)
             
             # 显示最优特征
-            with st.expander("📋 最优特征列表"):
+            with st.expander("📋 RFECV自动选择的特征列表"):
                 st.write(optimal_features)
+    
+    # 手动调整特征选择
+    if 'optimal_features_rfecv' in st.session_state:
+        st.markdown("---")
+        st.subheader("🔧 手动调整特征选择")
+        st.markdown("""
+        **目的**: 在 RFECV 自动选择的基础上进行调整：
+        - ✅ **保留/移除** RFECV 自动选择的特征
+        - ➕ **添加** 额外的关键物理特征
+        
+        **最终特征列表** = (RFECV 特征 - 移除的特征) + 手动添加的特征
+        """)
+        
+        # 获取所有可用的特征
+        all_features = st.session_state.selected_features_gbfs
+        rfecv_features = st.session_state.optimal_features_rfecv
+        
+        # 初始化选择状态
+        if 'rfecv_features_keep' not in st.session_state:
+            st.session_state.rfecv_features_keep = rfecv_features.copy()
+        if 'manual_added_features' not in st.session_state:
+            st.session_state.manual_added_features = []
+        
+        # 可供添加的特征 = GBFS筛选后的特征 - RFECV已选特征
+        available_for_manual = [f for f in all_features if f not in rfecv_features]
+        
+        st.info(f"📊 RFECV 已选择 {len(rfecv_features)} 个特征，还有 {len(available_for_manual)} 个特征可供手动添加")
+        
+        # 创建两个标签页
+        tab1, tab2 = st.tabs(["✅ RFECV 自动选择的特征", "➕ 手动添加额外特征"])
+        
+        # ========== Tab 1: RFECV 自动选择的特征 ==========
+        with tab1:
+            st.markdown("""
+            以下是 RFECV 自动选择的特征，**默认全部保留**。  
+            如果您认为某些特征不重要，可以取消勾选来移除它们。
+            """)
+            
+            # 搜索框 - RFECV特征
+            search_rfecv = st.text_input(
+                "🔍 搜索 RFECV 特征",
+                placeholder="输入关键词过滤...",
+                key="search_rfecv"
+            )
+            
+            # 分组RFECV特征
+            def group_features(features):
+                groups = {
+                    '硬质相特征 (Ceramic_)': [],
+                    '粘结相特征 (Binder_)': [],
+                    '复合特征 (Composite_)': [],
+                    '差异特征 (Diff_)': [],
+                    '比值特征 (Ratio_)': [],
+                    '界面特征 (Interface_/Mean_)': [],
+                    '工艺参数': []
+                }
+                
+                for feat in features:
+                    if feat.startswith('Ceramic_'):
+                        groups['硬质相特征 (Ceramic_)'].append(feat)
+                    elif feat.startswith('Binder_'):
+                        groups['粘结相特征 (Binder_)'].append(feat)
+                    elif feat.startswith('Composite_'):
+                        groups['复合特征 (Composite_)'].append(feat)
+                    elif feat.startswith('Diff_'):
+                        groups['差异特征 (Diff_)'].append(feat)
+                    elif feat.startswith('Ratio_'):
+                        groups['比值特征 (Ratio_)'].append(feat)
+                    elif feat.startswith('Interface_') or feat.startswith('Mean_'):
+                        groups['界面特征 (Interface_/Mean_)'].append(feat)
+                    else:
+                        groups['工艺参数'].append(feat)
+                
+                return groups
+            
+            # 应用搜索过滤 - RFECV
+            filtered_rfecv = rfecv_features
+            if search_rfecv:
+                search_keywords = search_rfecv.lower().split()
+                filtered_rfecv = [
+                    f for f in rfecv_features
+                    if any(keyword in f.lower() for keyword in search_keywords)
+                ]
+                st.caption(f"🔍 找到 {len(filtered_rfecv)} 个匹配的特征")
+            
+            # 分组显示RFECV特征
+            rfecv_groups = group_features(filtered_rfecv)
+            rfecv_selected = []
+            
+            for group_name, features in rfecv_groups.items():
+                if features:
+                    with st.expander(f"{group_name} ({len(features)} 个特征)", expanded=len(features) <= 10):
+                        # 全选按钮
+                        col_a, col_b = st.columns([1, 4])
+                        with col_a:
+                            select_all_rfecv = st.checkbox(
+                                "全选", 
+                                key=f"select_all_rfecv_{group_name}",
+                                value=True
+                            )
+                        
+                        # 显示特征复选框
+                        for feat in features:
+                            default_checked = (
+                                feat in st.session_state.rfecv_features_keep or 
+                                select_all_rfecv
+                            )
+                            
+                            is_selected = st.checkbox(
+                                feat,
+                                value=default_checked,
+                                key=f"rfecv_{feat}"
+                            )
+                            
+                            if is_selected:
+                                rfecv_selected.append(feat)
+            
+            st.session_state.rfecv_features_keep = rfecv_selected
+            removed_count = len(rfecv_features) - len(rfecv_selected)
+            
+            if removed_count > 0:
+                st.warning(f"⚠️ 已移除 {removed_count} 个 RFECV 选择的特征")
+            st.markdown(f"**保留的 RFECV 特征: {len(rfecv_selected)} 个**")
+        
+        # ========== Tab 2: 手动添加额外特征 ==========
+        with tab2:
+            if available_for_manual:
+                st.markdown("""
+                以下特征是 RFECV **未选择**的，但您可以根据领域知识手动添加它们。
+                """)
+                
+                # 搜索框 - 手动添加
+                search_manual = st.text_input(
+                    "🔍 搜索可添加的特征",
+                    placeholder="例如：MagpieData, Diff, Ratio, Interface...",
+                    key="search_manual"
+                )
+                
+                # 应用搜索过滤 - 手动添加
+                filtered_manual = available_for_manual
+                if search_manual:
+                    search_keywords = search_manual.lower().split()
+                    filtered_manual = [
+                        f for f in available_for_manual 
+                        if any(keyword in f.lower() for keyword in search_keywords)
+                    ]
+                    st.caption(f"🔍 找到 {len(filtered_manual)} 个匹配的特征")
+                
+                # 分组显示可添加特征
+                manual_groups = group_features(filtered_manual)
+                manual_selected = []
+                
+                for group_name, features in manual_groups.items():
+                    if features:
+                        with st.expander(f"{group_name} ({len(features)} 个特征)", expanded=len(features) <= 10):
+                            # 全选按钮
+                            col_a, col_b = st.columns([1, 4])
+                            with col_a:
+                                select_all_manual = st.checkbox(
+                                    "全选", 
+                                    key=f"select_all_manual_{group_name}"
+                                )
+                            
+                            # 显示特征复选框
+                            for feat in features:
+                                default_checked = (
+                                    feat in st.session_state.manual_added_features or 
+                                    select_all_manual
+                                )
+                                
+                                is_selected = st.checkbox(
+                                    feat,
+                                    value=default_checked,
+                                    key=f"manual_{feat}"
+                                )
+                                
+                                if is_selected:
+                                    manual_selected.append(feat)
+                
+                st.session_state.manual_added_features = manual_selected
+                st.markdown(f"**手动添加的特征: {len(manual_selected)} 个**")
+            else:
+                st.info("RFECV 已经选择了所有 GBFS 筛选后的特征，无可添加的特征")
+        
+        # ========== 确认按钮 ==========
+        st.markdown("---")
+        
+        # 计算最终特征列表
+        rfecv_kept = st.session_state.rfecv_features_keep
+        manual_added = st.session_state.manual_added_features
+        final_features = list(set(rfecv_kept + manual_added))
+        
+        # 显示统计信息
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("RFECV 原选择", len(rfecv_features))
+        with col2:
+            removed = len(rfecv_features) - len(rfecv_kept)
+            st.metric("移除特征", removed, delta=f"-{removed}" if removed > 0 else "0")
+        with col3:
+            st.metric("手动添加", len(manual_added), delta=f"+{len(manual_added)}" if len(manual_added) > 0 else "0")
+        with col4:
+            st.metric("最终特征总数", len(final_features))
+        
+        # 确认按钮
+        col_btn1, col_btn2, col_btn3 = st.columns([2, 2, 3])
+        with col_btn1:
+            if st.button("✅ 确认最终特征列表", type="primary"):
+                st.session_state.optimal_features = final_features
+                st.session_state.manual_selected_features = manual_added
+                
+                st.success(f"""
+                ✅ **特征调整完成！**
+                - RFECV 保留: {len(rfecv_kept)} 个
+                - RFECV 移除: {len(rfecv_features) - len(rfecv_kept)} 个
+                - 手动添加: {len(manual_added)} 个
+                - **最终特征总数: {len(final_features)} 个**
+                """)
+                
+                # 显示最终特征列表
+                with st.expander("📋 最终特征列表详情"):
+                    if len(rfecv_features) - len(rfecv_kept) > 0:
+                        st.markdown("**🗑️ 已移除的 RFECV 特征:**")
+                        removed_features = [f for f in rfecv_features if f not in rfecv_kept]
+                        for feat in removed_features:
+                            st.write(f"- ~~{feat}~~")
+                        st.markdown("---")
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown("**✅ 保留的 RFECV 特征:**")
+                        for feat in rfecv_kept:
+                            st.write(f"- {feat}")
+                    
+                    with col2:
+                        if manual_added:
+                            st.markdown("**✨ 手动添加的特征:**")
+                            for feat in manual_added:
+                                st.write(f"- {feat}")
+                        else:
+                            st.info("未添加手动特征")
+        
+        with col_btn2:
+            if st.button("🔄 重置所有选择"):
+                st.session_state.rfecv_features_keep = rfecv_features.copy()
+                st.session_state.manual_added_features = []
+                st.rerun()
 
 # ====================
 # 6. 保存结果
