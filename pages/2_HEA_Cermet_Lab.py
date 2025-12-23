@@ -209,8 +209,18 @@ with tab_single:
             st.subheader("3. AI Prediction System")
             
             predictor = AIPredictor()
-            # 传递design对象以支持ModelX预测
-            preds = predictor.predict(design)
+            
+            # 捕获警告并显示给用户
+            import warnings
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                # 传递design对象以支持ModelX和ModelY预测
+                preds = predictor.predict(design)
+                
+                # 如果有警告，显示给用户
+                if w:
+                    for warning in w:
+                        st.warning(f"⚠️ {warning.message}")
             
             # Performance Metrics
             m1, m2 = st.columns(2)
@@ -228,7 +238,13 @@ with tab_single:
             
             # K1C
             k1c_src = preds.get('K1C_Source', 'Unknown')
-            delta_k1c = "ML" if "ML" in k1c_src else "Heuristic"
+            # 支持ModelY来源
+            if 'ModelY' in k1c_src:
+                delta_k1c = "🎯 ModelY"
+            elif "ML" in k1c_src:
+                delta_k1c = "ML"
+            else:
+                delta_k1c = "Heuristic"
             m2.metric(t('pred_k1c'), f"{preds['Predicted_K1C']:.2f} MPa·m½", delta=delta_k1c, help=f"Source: {k1c_src}")
             
             # Phase Stability Analysis

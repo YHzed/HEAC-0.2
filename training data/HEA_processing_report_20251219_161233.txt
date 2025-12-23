@@ -1,0 +1,87 @@
+================================================================================
+HEA.xlsx 数据处理报告
+================================================================================
+
+处理时间: 2025-12-19 16:12:34.878925
+
+数据统计:
+  原始数据行数: 2523
+  处理后行数: 2439
+  数据保留率: 96.7%
+
+列信息:
+  总列数: 54
+  列名: Group, Subgroup, Original_Composition, Binder_Composition, Binder_Atomic_Formula, Binder_Wt_Pct, Binder_Vol_Pct, Ceramic_Type, Ceramic_Wt_Pct, Sinter_Temp_C, Grain_Size_um, Load_kgf, Sintering_Method, HV_kgf_mm2, KIC_MPa_m, TRS_MPa, Binder_Co_atomic_frac, Binder_x_atomic_frac, Binder_Os_atomic_frac, Binder_C_atomic_frac, Binder_Cu_atomic_frac, Binder_Cr_atomic_frac, Binder_c_atomic_frac, Binder_W_atomic_frac, Binder_Re_atomic_frac, Binder_Ru_atomic_frac, Binder_Ni_atomic_frac, Binder_Mo_atomic_frac, Binder_G_atomic_frac, Binder_I_atomic_frac, Binder_co_atomic_frac, Binder_hf_atomic_frac, Binder__atomic_frac, Binder_Al_atomic_frac, Binder_Fe_atomic_frac, Binder_x6_atomic_frac, Binder_x7_atomic_frac, Binder_x77_atomic_frac, Binder_x4_atomic_frac, Binder_x12_atomic_frac, Binder_Si_atomic_frac, Binder_Ti_atomic_frac, Binder_V_atomic_frac, Binder_Mn_atomic_frac, Binder_Nb_atomic_frac, Binder_B_atomic_frac, Binder_N_atomic_frac, Binder_Ta_atomic_frac, Binder_Zr_atomic_frac, Binder_Type, Ceramic_Type_Class, Binder_Element_Count, Hardness_Grade, Toughness_Grade
+
+粘结相类型分布:
+Binder_Type
+Co-based    1369
+Ni-based     631
+Co-Ni        246
+Fe-based     136
+Other         57
+
+硬质相类型分布:
+Ceramic_Type_Class
+WC-based              2000
+Other                  242
+Ti-carbide/nitride     197
+
+硬度等级分布:
+Hardness_Grade
+High         1035
+Very High     898
+Medium        480
+Low            23
+Unknown         3
+
+韧性等级分布:
+Toughness_Grade
+Medium       1030
+Low           942
+High          285
+Very High     139
+Unknown        43
+
+数据质量评估:
+  缺失值统计:
+    Subgroup: 300 (12.3%)
+    Binder_Vol_Pct: 200 (8.2%)
+    Sinter_Temp_C: 1089 (44.6%)
+    Grain_Size_um: 1140 (46.7%)
+    HV_kgf_mm2: 3 (0.1%)
+    KIC_MPa_m: 43 (1.8%)
+    TRS_MPa: 1822 (74.7%)
+    Binder_Co_atomic_frac: 828 (33.9%)
+    Binder_x_atomic_frac: 2250 (92.3%)
+    Binder_Os_atomic_frac: 2438 (100.0%)
+    Binder_C_atomic_frac: 2414 (99.0%)
+    Binder_Cu_atomic_frac: 2432 (99.7%)
+    Binder_Cr_atomic_frac: 2224 (91.2%)
+    Binder_c_atomic_frac: 2405 (98.6%)
+    Binder_W_atomic_frac: 2425 (99.4%)
+    Binder_Re_atomic_frac: 2370 (97.2%)
+    Binder_Ru_atomic_frac: 2404 (98.6%)
+    Binder_Ni_atomic_frac: 1562 (64.0%)
+    Binder_Mo_atomic_frac: 2277 (93.4%)
+    Binder_G_atomic_frac: 2437 (99.9%)
+    Binder_I_atomic_frac: 2437 (99.9%)
+    Binder_co_atomic_frac: 2438 (100.0%)
+    Binder_hf_atomic_frac: 2438 (100.0%)
+    Binder__atomic_frac: 2424 (99.4%)
+    Binder_Al_atomic_frac: 2207 (90.5%)
+    Binder_Fe_atomic_frac: 2039 (83.6%)
+    Binder_x6_atomic_frac: 2435 (99.8%)
+    Binder_x7_atomic_frac: 2427 (99.5%)
+    Binder_x77_atomic_frac: 2433 (99.8%)
+    Binder_x4_atomic_frac: 2438 (100.0%)
+    Binder_x12_atomic_frac: 2438 (100.0%)
+    Binder_Si_atomic_frac: 2400 (98.4%)
+    Binder_Ti_atomic_frac: 2344 (96.1%)
+    Binder_V_atomic_frac: 2434 (99.8%)
+    Binder_Mn_atomic_frac: 2423 (99.3%)
+    Binder_Nb_atomic_frac: 2401 (98.4%)
+    Binder_B_atomic_frac: 2426 (99.5%)
+    Binder_N_atomic_frac: 2433 (99.8%)
+    Binder_Ta_atomic_frac: 2436 (99.9%)
+    Binder_Zr_atomic_frac: 2434 (99.8%)

@@ -45,6 +45,11 @@ class DesignSpace:
     sinter_time_min: float = 60.0
     process_route: str = 'Vacuum Sintering' # 'Vacuum', 'HIP', 'Sinter-HIP'
 
+    @property
+    def binder_vol_fraction(self) -> float:
+        """粘结相体积分数（= 1 - 陶瓷体积分数）"""
+        return 1.0 - self.ceramic_vol_fraction
+    
     def get_binder_composition_atomic(self) -> Dict[str, float]:
         """Returns normalized atomic fractions of the HEA binder."""
         if not self.is_mass_fraction:
@@ -180,16 +185,33 @@ class PhysicsEngine:
             'pred_magnetic_moment': self.feature_injector.predict_magnetic_moment(composition_atomic)
         }
         
-        # 处理None值
+        # 定义合理的默认值（当proxy预测失败时使用）
+        DEFAULT_PROXY_VALUES = {
+            'pred_formation_energy': -0.5,  # eV/atom，典型HEA的负形成能
+            'pred_lattice_param': 3.6,      # Å，FCC HEA的典型晶格常数
+            'pred_magnetic_moment': 0.5     # μB/atom，弱磁性
+        }
+        
+        # 处理None值，使用默认值并发出警告
         for key in proxy_features:
             if proxy_features[key] is None:
-                proxy_features[key] = 0.0
+                import warnings
+                warnings.warn(
+                    f"⚠️ {key}预测失败，使用经验默认值={DEFAULT_PROXY_VALUES[key]}。"
+                    f"这可能影响最终预测精度。",
+                    UserWarning
+                )
+                proxy_features[key] = DEFAULT_PROXY_VALUES[key]
         
         # ==== 使用ModelXAdapter提取完整的18个特征 ====
+        # 注意：Binder_Wt_Pct应该是粘结相的质量百分比
+        # 简化假设：粘结相的体积分数约等于质量分数(实际应考虑密度差异)
+        binder_wt_pct = design.binder_vol_fraction * 100  # 粘结相体积百分比
+        
         modelx_features = self.modelx_adapter.extract_modelx_features(
             composition_atomic=composition_atomic,
             composition_wt=composition_wt,
-            binder_wt_pct=design.ceramic_vol_fraction * 100,  # 转换为百分比
+            binder_wt_pct=binder_wt_pct,
             grain_size_um=design.grain_size_um,
             proxy_features=proxy_features,
             ceramic_type=design.ceramic_type
@@ -379,8 +401,8 @@ class AIPredictor:
         self._load_models()
         
     def _load_models(self):
-        """尝试加载训练好的模型，优先加载ModelX"""
-        # 1. 尝试加载ModelX
+        """尝试加载训练好的模型，优先加载ModelX和ModelY"""
+        # 1. 尝试加载ModelX (HV预测)
         modelx_path = os.path.join('models', 'ModelX.pkl')
         if os.path.exists(modelx_path) and MODELX_AVAILABLE:
             try:
@@ -391,8 +413,22 @@ class AIPredictor:
             except Exception as e:
                 print(f"Warning: Failed to load ModelX: {e}")
         
-        # 2. 加载其他模型（K1C, PhaseStability等）
-        for target in ['K1C', 'PhaseStability']:
+        # 2. 尝试加载ModelY (KIC预测)
+        modely_path = os.path.join('models', 'ModelY.pkl')
+        if os.path.exists(modely_path):
+            try:
+                import joblib
+                self.models['ModelY'] = joblib.load(modely_path)
+                print(f"✓ ModelY loaded successfully for KIC prediction")
+                
+                # 如果PhysicsEngine还未初始化(ModelX加载失败),初始化它
+                if not self.physics_engine and MODELX_AVAILABLE:
+                    self.physics_engine = PhysicsEngine()
+            except Exception as e:
+                print(f"Warning: Failed to load ModelY: {e}")
+        
+        # 3. 加载其他模型（PhaseStability等）
+        for target in ['PhaseStability']:
             path = os.path.join(self.model_dir, f'cermet_model_{target.lower()}.joblib')
             if os.path.exists(path):
                 try:
@@ -426,11 +462,18 @@ class AIPredictor:
         # Convert features dict to DataFrame (1 row) for flexible model input
         X = pd.DataFrame([features])
         
+        # ❗ 为了避免重复警告，只计算一次ModelX特征（ModelX和ModelY共用）
+        modelx_features = None
+        if self.physics_engine and design and ('ModelX' in self.models or 'ModelY' in self.models):
+            try:
+                modelx_features = self.physics_engine.compute_modelx_features(design)
+            except Exception as e:
+                print(f"compute_modelx_features failed: {e}")
+        
         # --- HV Prediction (优先使用ModelX) ---
-        if 'ModelX' in self.models and self.physics_engine and design:
+        if 'ModelX' in self.models and modelx_features is not None:
             try:
                 # 使用ModelX预测
-                modelx_features = self.physics_engine.compute_modelx_features(design)
                 hv_pred = self.physics_engine.modelx_adapter.predict_single(modelx_features)
                 results['Predicted_HV'] = hv_pred
                 results['HV_Source'] = 'ModelX (R²=0.91)'
@@ -443,8 +486,35 @@ class AIPredictor:
             results['Predicted_HV'] = self._fallback_hv(features)
             results['HV_Source'] = 'Heuristic'
             
-        # --- K1C Prediction ---
-        if 'K1C' in self.models:
+        # --- K1C Prediction (优先使用ModelY) ---
+        if 'ModelY' in self.models and modelx_features is not None:
+            try:
+                # 准备特征DataFrame
+                from .modelx_adapter import ModelXAdapter
+                adapter = ModelXAdapter()
+                X_modely = adapter.prepare_features_dataframe([modelx_features])
+                
+                # 使用ModelY预测
+                k1c_pred = self.models['ModelY'].predict(X_modely)[0]
+                
+                # ❗ KIC不能为负值，如果为负取绝对值并警告
+                if k1c_pred < 0:
+                    import warnings
+                    warnings.warn(
+                        f"⚠️ ModelY预测返回负值{k1c_pred:.2f}，已转换为绝对值。"
+                        f"请检查模型训练数据。",
+                        UserWarning
+                    )
+                    k1c_pred = abs(k1c_pred)
+                
+                results['Predicted_K1C'] = k1c_pred
+                results['K1C_Source'] = 'ModelY'
+            except Exception as e:
+                print(f"ModelY prediction failed: {e}, using fallback")
+                results['Predicted_K1C'] = self._fallback_k1c(features)
+                results['K1C_Source'] = 'Heuristic (ModelY Error)'
+        elif 'K1C' in self.models:
+            # 使用旧的K1C模型(如果存在)
             try:
                 results['Predicted_K1C'] = self.models['K1C'].predict(X)[0]
                 results['K1C_Source'] = 'ML Model'
@@ -452,6 +522,7 @@ class AIPredictor:
                 results['Predicted_K1C'] = self._fallback_k1c(features)
                 results['K1C_Source'] = 'Heuristic (Model Error)'
         else:
+            # Fallback到启发式
             results['Predicted_K1C'] = self._fallback_k1c(features)
             results['K1C_Source'] = 'Heuristic'
             
