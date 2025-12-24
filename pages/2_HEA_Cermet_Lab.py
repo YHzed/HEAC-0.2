@@ -236,8 +236,16 @@ with tab_single:
                 delta_hv = "Heuristic"
             m1.metric(t('pred_hv'), f"{preds['Predicted_HV']:.0f} HV", delta=delta_hv, help=f"Source: {hv_src}")
             
+            
             # K1C
             k1c_src = preds.get('K1C_Source', 'Unknown')
+            k1c_value = preds['Predicted_K1C']
+            
+            # ❗ KIC不能为负值，如果为负则警告并转换
+            if k1c_value < 0:
+                st.warning(f"⚠️ KIC预测值为负 ({k1c_value:.2f})，已转换为绝对值。请检查ModelY训练数据。")
+                k1c_value = abs(k1c_value)
+            
             # 支持ModelY来源
             if 'ModelY' in k1c_src:
                 delta_k1c = "🎯 ModelY"
@@ -245,7 +253,7 @@ with tab_single:
                 delta_k1c = "ML"
             else:
                 delta_k1c = "Heuristic"
-            m2.metric(t('pred_k1c'), f"{preds['Predicted_K1C']:.2f} MPa·m½", delta=delta_k1c, help=f"Source: {k1c_src}")
+            m2.metric(t('pred_k1c'), f"{k1c_value:.2f} MPa·m½", delta=delta_k1c, help=f"Source: {k1c_src}")
             
             # Phase Stability Analysis
             st.markdown("**Phase Composition Analysis (AI)**")

@@ -10,6 +10,17 @@ from typing import Dict, List, Tuple, Any, Optional, Union
 # Re-use existing database
 from .material_database import db as material_db
 
+# 导入特征定义
+try:
+    from .feature_definitions import PROXY_DEFAULTS
+except ImportError:
+    # Fallback
+    PROXY_DEFAULTS = {
+        'pred_formation_energy': -0.5,
+        'pred_lattice_param': 3.6,
+        'pred_magnetic_moment': -0.5,
+    }
+
 # ModelX和特征注入器
 try:
     from .modelx_adapter import ModelXAdapter
@@ -88,7 +99,7 @@ class PhysicsEngine:
             try:
                 # 尝试加载FeatureInjector（需要proxy模型）
                 from .feature_injector import FeatureInjector
-                self.feature_injector = FeatureInjector()
+                self.feature_injector = FeatureInjector(model_dir='models/proxy_models')  # ❗ 修复路径
                 print("✓ FeatureInjector loaded for proxy predictions")
             except Exception as e:
                 print(f"Warning: FeatureInjector not available - {e}")
@@ -201,23 +212,70 @@ class PhysicsEngine:
                     f"这可能影响最终预测精度。",
                     UserWarning
                 )
-                proxy_features[key] = DEFAULT_PROXY_VALUES[key]
+                proxy_features[key] = PROXY_DEFAULTS[key]
         
-        # ==== 使用ModelXAdapter提取完整的18个特征 ====
-        # 注意：Binder_Wt_Pct应该是粘结相的质量百分比
-        # 简化假设：粘结相的体积分数约等于质量分数(实际应考虑密度差异)
-        binder_wt_pct = design.binder_vol_fraction * 100  # 粘结相体积百分比
+        # ==== 使用ModelXAdapter提取完整的11个特征 ====
+        # 注意：ModelX训练时使用的是Binder_Vol_Pct（体积百分比）
+        binder_vol_pct = design.binder_vol_fraction * 100  # 粘结相体积百分比
         
         modelx_features = self.modelx_adapter.extract_modelx_features(
             composition_atomic=composition_atomic,
             composition_wt=composition_wt,
-            binder_wt_pct=binder_wt_pct,
+            binder_vol_pct=binder_vol_pct,  # ❗ 使用vol_pct参数
             grain_size_um=design.grain_size_um,
             proxy_features=proxy_features,
             ceramic_type=design.ceramic_type
         )
         
         return modelx_features
+    
+    def compute_modely_features(self, design: DesignSpace) -> Dict[str, float]:
+        """
+        为ModelY计算13个特征
+        
+        Args:
+            design: 设计空间对象
+            
+        Returns:
+            13个特征的字典
+        """
+        if not self.modelx_adapter or not self.feature_injector:
+            raise RuntimeError("ModelY components not initialized")
+        
+        composition_atomic = design.get_binder_composition_atomic()
+        composition_wt = design.get_binder_composition_wt()
+        
+        # ==== Proxy模型预测（需要全部3个） ====
+        proxy_features = {
+            'pred_formation_energy': self.feature_injector.predict_formation_energy(composition_atomic),
+            'pred_lattice_param': self.feature_injector.predict_lattice_parameter(composition_atomic),
+            'pred_magnetic_moment': self.feature_injector.predict_magnetic_moment(composition_atomic)
+        }
+        
+        # 处理None值
+        for key in proxy_features:
+            if proxy_features[key] is None:
+                import warnings
+                warnings.warn(
+                    f"⚠️ {key}预测失败，使用经验默认值={PROXY_DEFAULTS.get(key, 0.0)}。",
+                    UserWarning
+                )
+                proxy_features[key] = PROXY_DEFAULTS.get(key, 0.0)
+        
+        # ==== 使用ModelXAdapter提取ModelY的13个特征 ====
+        binder_vol_pct = design.binder_vol_fraction * 100
+        
+        modely_features = self.modelx_adapter.extract_modely_features(
+            composition_atomic=composition_atomic,
+            composition_wt=composition_wt,
+            binder_vol_pct=binder_vol_pct,
+            grain_size_um=design.grain_size_um,
+            sinter_temp_c=design.sinter_temp_c,
+            proxy_features=proxy_features,
+            ceramic_type=design.ceramic_type
+        )
+        
+        return modely_features
 
 
     def calculate_volume_fractions(self, design: DesignSpace) -> Dict[str, float]:
@@ -418,10 +476,13 @@ class AIPredictor:
         if os.path.exists(modely_path):
             try:
                 import joblib
-                self.models['ModelY'] = joblib.load(modely_path)
+                modely_dict = joblib.load(modely_path)
+                self.models['ModelY'] = modely_dict['model']  # 提取model对象
+                self.modely_scaler = modely_dict.get('scaler')
+                self.modely_features = modely_dict.get('feature_names')
                 print(f"✓ ModelY loaded successfully for KIC prediction")
                 
-                # 如果PhysicsEngine还未初始化(ModelX加载失败),初始化它
+                # 如果PhysicsEngine还未初始化
                 if not self.physics_engine and MODELX_AVAILABLE:
                     self.physics_engine = PhysicsEngine()
             except Exception as e:
@@ -489,13 +550,27 @@ class AIPredictor:
         # --- K1C Prediction (优先使用ModelY) ---
         if 'ModelY' in self.models and modelx_features is not None:
             try:
-                # 准备特征DataFrame
+                # ModelY使用与ModelX不同的13个特征
+                modely_features = self.physics_engine.compute_modely_features(design)
+                
+                # 准备特征DataFrame（使用ModelY的特征名列表）
                 from .modelx_adapter import ModelXAdapter
                 adapter = ModelXAdapter()
-                X_modely = adapter.prepare_features_dataframe([modelx_features])
+                
+                # 为ModelY准备特征，使用modely_features字典
+                df_modely = pd.DataFrame([modely_features])
+                
+                # 确保所有ModelY特征存在
+                for feat in self.modely_features:
+                    if feat not in df_modely.columns:
+                        print(f"Warning: Missing ModelY feature {feat}, filling with 0")
+                        df_modely[feat] = 0.0
+                
+                # 按照ModelY期望顺序选择列
+                df_modely = df_modely[self.modely_features]
                 
                 # 使用ModelY预测
-                k1c_pred = self.models['ModelY'].predict(X_modely)[0]
+                k1c_pred = self.models['ModelY'].predict(df_modely)[0]
                 
                 # ❗ KIC不能为负值，如果为负取绝对值并警告
                 if k1c_pred < 0:
