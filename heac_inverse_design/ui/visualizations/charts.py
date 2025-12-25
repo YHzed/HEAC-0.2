@@ -128,23 +128,38 @@ def plot_process_parameters(solution) -> go.Figure:
     Returns:
         Plotly图表对象
     """
-    params = {
-        'Ceramic Vol %': solution.ceramic_vol * 100,
-        'Grain Size (μm)': solution.grain_size,
-        'Sinter Temp (°C)': solution.sinter_temp / 10  # 缩放以便显示
-    }
+    # 准备数据：显示值 vs 绘图值
+    plot_keys = ['Ceramic Vol %', 'Grain Size (μm)', 'Sinter Temp (°C)']
+    
+    # 真实值（用于显示）
+    real_values = [
+        solution.ceramic_vol * 100,
+        solution.grain_size,
+        solution.sinter_temp
+    ]
+    
+    # 绘图值（缩放以适应同一坐标系）
+    # 将温度除以20，使其落在 ~70 左右 (1400/20 = 70)，与体积(50-70)和晶粒尺寸(1-5)更协调
+    plot_values = [
+        real_values[0],
+        real_values[1],
+        real_values[2] / 20.0 
+    ]
     
     fig = go.Figure()
     
     fig.add_trace(go.Bar(
-        x=list(params.keys()),
-        y=list(params.values()),
+        x=plot_keys,
+        y=plot_values,
         marker=dict(
             color=['#636EFA', '#EF553B', '#00CC96'],
             opacity=0.7
         ),
-        text=[f"{v:.1f}" for v in params.values()],
-        textposition='outside'
+        # 显示真实值
+        text=[f"{v:.1f}" for v in real_values],
+        textposition='outside',
+        # 自定义hover信息
+        hovertemplate='%{x}<br>Value: %{text}<extra></extra>'
     ))
     
     fig.update_layout(

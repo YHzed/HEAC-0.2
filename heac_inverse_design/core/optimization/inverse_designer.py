@@ -100,11 +100,13 @@ class InverseDesigner:
             # 1. 采样成分（改进的Dirichlet分布方法）
             n_elements = len(allowed_elements)
             
-            # 使用log-normal分布采样，然后归一化（更均匀的探索）
+            # 使用log-normal分布采样，然后归一化
+            # 调整采样范围以倾向于 5% - 35% 的区间
+            # log10(0.05) ≈ -1.3, log10(0.35) ≈ -0.45
             raw_fractions = []
             for i, el in enumerate(allowed_elements):
                 # 在log空间采样以获得更好的分布
-                log_val = trial.suggest_float(f'log_frac_{el}', -3, 0)  # 10^-3 到 10^0
+                log_val = trial.suggest_float(f'log_frac_{el}', -1.3, -0.45) 
                 raw_fractions.append(10 ** log_val)
             
             # 归一化
@@ -167,6 +169,13 @@ class InverseDesigner:
                 penalty += (target_kic_range[0] - kic) * 100
             elif kic > target_kic_range[1]:
                 penalty += (kic - target_kic_range[1]) * 100
+
+            # 成分约束 (5% - 35%)
+            for el, frac in composition.items():
+                if frac < 0.05:
+                    penalty += (0.05 - frac) * 1000  # 强惩罚太小的
+                elif frac > 0.35:
+                    penalty += (frac - 0.35) * 1000  # 强惩罚太大的
             
             return hv - penalty, kic - penalty
         

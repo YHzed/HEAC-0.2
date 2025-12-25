@@ -107,5 +107,26 @@ __all__ = [
     '_HAS_STREAMLIT',
 ]
 
+# === 新数据库架构 v2.0 ===
+try:
+    from .db_manager import CermetDB
+    from .db_models_v2 import CermetDatabaseV2
+    from .composition_parser import CompositionParser
+    from .physics_calculator import PhysicsCalculator
+    from .feature_engine import FeatureEngine
+    from .proxy_model_predictor import ProxyModelPredictor
+    from .data_extractor import DataExtractor
+    _HAS_DB_V2 = True
+except ImportError as e:
+    print(f"Info: Database v2 modules not fully loaded: {e}")
+    CermetDB = None
+    CermetDatabaseV2 = None
+    CompositionParser = None
+    PhysicsCalculator = None
+    FeatureEngine = None
+    ProxyModelPredictor = None
+    DataExtractor = None
+    _HAS_DB_V2 = False
+
 __version__ = '0.2.0'
 
