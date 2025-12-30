@@ -44,13 +44,12 @@ class ProxyModelPredictor:
             if feature_file.exists():
                 self.feature_names = joblib.load(feature_file)
             
-            # 加载各个模型
+            # 加载各个模型(只加载已训练的模型)
             model_files = {
                 'formation_energy': 'formation_energy_model.pkl',
                 'lattice': 'lattice_model.pkl',
                 'magnetic_moment': 'magnetic_moment_model.pkl',
-                'bulk_modulus': 'bulk_modulus_model.pkl',
-                'shear_modulus': 'shear_modulus_model.pkl'
+                # bulk_modulus, shear_modulus未训练,已移除
             }
             
             for model_name, filename in model_files.items():

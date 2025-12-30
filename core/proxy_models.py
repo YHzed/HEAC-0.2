@@ -1,15 +1,15 @@
 ﻿"""
 辅助模型训练器（Proxy Models Trainer）
 
-基于Zenodo的8.4万条HEA数据训练辅助模型：
-- 模型A: Formation Energy（形成能）
-- 模型B: Lattice Parameter（晶格常数）
-- 模型C: Magnetic Moment（磁矩）
-- 模型D: Elastic Modulus（弹性模量）- 混合策略
-- 模型E: Brittleness Index（脆性指数）
+基于Zenodo的8.4万条HEA数据训练辅助模型:
+- 模型A: Formation Energy(形成能)
+- 模型B: Lattice Parameter(晶格常数)
+- 模型C: Magnetic Moment(磁矩)
+- 模型D: Elastic Modulus(弹性模量) - 混合策略
+- 模型E: Brittleness Index(脆性指数)
 
-作者：HEAC项目组
-版本：1.0
+作者:HEAC项目组
+版本:1.0
 """
 
 import os
@@ -27,6 +27,14 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 
+# 导入配置模块以加载.env
+try:
+    from core.config import config
+    CONFIG_AVAILABLE = True
+except ImportError:
+    CONFIG_AVAILABLE = False
+    warnings.warn("无法导入config模块,将无法自动加载.env配置")
+
 # Materials Project API (可选)
 try:
     from mp_api.client import MPRester
@@ -40,7 +48,7 @@ class ProxyModelTrainer:
     """
     辅助模型训练器
     
-    负责从Zenodo数据集训练5个辅助模型，用于预测HEA的深层物理属性
+    负责从Zenodo数据集训练5个辅助模型,用于预测HEA的深层物理属性
     """
     
     def __init__(self, data_path: str, mp_api_key: Optional[str] = None):
@@ -48,10 +56,15 @@ class ProxyModelTrainer:
         初始化训练器
         
         Args:
-            data_path: Zenodo数据集路径（structure_featurized.dat_all.csv）
-            mp_api_key: Materials Project API密钥（可选，用于弹性数据）
+            data_path: Zenodo数据集路径(structure_featurized.dat_all.csv)
+            mp_api_key: Materials Project API密钥(可选,用于弹性数据)
         """
         self.data_path = Path(data_path)
+        
+        # 如果未提供API密钥,尝试从环境变量加载
+        if mp_api_key is None and CONFIG_AVAILABLE:
+            mp_api_key = config.MP_API_KEY
+        
         self.mp_api_key = mp_api_key
         
         # 数据
@@ -66,10 +79,10 @@ class ProxyModelTrainer:
         
         print(f"[*] 辅助模型训练器已初始化")
         print(f"[File] 数据路径: {self.data_path}")
-        if mp_api_key:
-            print(f"[Key] Materials Project API: 已配置")
+        if self.mp_api_key:
+            print(f"[Key] Materials Project API: 已配置 ✓")
         else:
-            print(f"[!]  Materials Project API: 未配置（将使用经验公式）")
+            print(f"[!]  Materials Project API: 未配置(将使用经验公式)")
     
     def load_data(self):
         """加载Zenodo数据集"""
@@ -84,10 +97,34 @@ class ProxyModelTrainer:
         self.df = pd.read_csv(self.data_path, index_col=0)
         print(f"[OK] 数据加载完成: {self.df.shape}")
         
-        # 显示可用的目标列
-        target_cols = ['Ef_per_atom', 'volume_per_atom', 'magmom', 'lattice']
-        available_targets = [col for col in target_cols if col in self.df.columns]
-        print(f"[Stats] 可用目标列: {available_targets}")
+        # Data Cleaning as per user recommendation
+        print("\n[Cleaning] 执行数据清洗...")
+        initial_count = len(self.df)
+        
+        # 1. Filter for FCC structures (Space Group 225)
+        if 'space_group_number' in self.df.columns:
+            self.df = self.df[self.df['space_group_number'] == 225]
+            print(f"   [Filter] 仅保留 FCC (SpaceGroup 225): {len(self.df)} / {initial_count}")
+        
+        # 2. Filter for low formation energy (Stable/Metastable)
+        if 'Ef_per_atom' in self.df.columns:
+            # Using 0.1 eV/atom as strict threshold for stable binders
+            self.df = self.df[self.df['Ef_per_atom'] < 0.1]
+            print(f"   [Filter] 仅保留稳定相 (Ef < 0.1 eV): {len(self.df)}")
+
+        # Custom parsing for 'magmom' if it is a string vector
+        if 'magmom' in self.df.columns and self.df['magmom'].dtype == 'O':
+            print("[Info] Parsing 'magmom' column from string vectors to scalars...")
+            def parse_magmom(val):
+                try:
+                    # Convert space-separated string to float array and take mean absolute value
+                    # Adjust this logic if total moment is preferred
+                    vals = [float(x) for x in str(val).strip().split()]
+                    return np.mean(np.abs(vals)) if vals else 0.0
+                except:
+                    return 0.0
+            
+            self.df['magmom'] = self.df['magmom'].apply(parse_magmom)
         
         return self.df
     
@@ -95,16 +132,21 @@ class ProxyModelTrainer:
         """
         准备特征矩阵
         
-        提取273个Matminer特征（最后273列）
+        提取Matminer Magpie特征（包含 'MagpieData' 的列）
         """
         print("\n" + "=" * 70)
         print("[Setup] 准备特征矩阵...")
         print("=" * 70)
         
-        # 根据demo_ML_training.py，最后273列是特征
-        nfeatures = 273
-        self.feature_names = self.df.columns[-nfeatures:]
+        # 自动筛选包含 'MagpieData' 的列
+        magpie_cols = [col for col in self.df.columns if 'MagpieData' in col]
         
+        if not magpie_cols:
+            raise ValueError("未在数据集中找到 'MagpieData' 特征列！")
+
+        print(f"[Stats] 找到 {len(magpie_cols)} 个 MagpieData 特征列")
+        
+        self.feature_names = magpie_cols
         X_all = self.df[self.feature_names]
         
         # 移除方差为0的特征
@@ -112,9 +154,9 @@ class ProxyModelTrainer:
         valid_features = variance[variance != 0].index
         X_all = X_all[valid_features]
         
-        removed_count = nfeatures - len(valid_features)
+        removed_count = len(magpie_cols) - len(valid_features)
         print(f"[OK] 特征准备完成:")
-        print(f"   原始特征: {nfeatures}")
+        print(f"   原始特征: {len(magpie_cols)}")
         print(f"   移除零方差特征: {removed_count}")
         print(f"   最终特征: {len(valid_features)}")
         
@@ -245,7 +287,7 @@ class ProxyModelTrainer:
         optimized_model = Pipeline([
             ('scaler', StandardScaler()),
             ('model', xgb.XGBRegressor(
-                n_estimators=800,          # 增加树的数量
+                n_estimators=1000,          # 增加树的数量 (Optimized)
                 learning_rate=0.05,         # 降低学习率以提高泛化
                 max_depth=10,               # 增加深度以捕获复杂关系
                 reg_lambda=0.1,             # 增加L2正则化
@@ -483,7 +525,7 @@ class ProxyModelTrainer:
             'target_name': target_name
         }
     
-    def save_models(self, output_dir: str = "saved_models/proxy"):
+    def save_models(self, output_dir: str = "models/proxy_models"):
         """
         保存所有训练好的模型
         

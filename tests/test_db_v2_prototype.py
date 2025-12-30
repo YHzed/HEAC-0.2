@@ -15,7 +15,8 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from core.db_models_v2 import CermetDatabaseV2, Experiment, Composition, Property, CalculatedFeature
+from core.db_manager import DatabaseManager
+from core.db_models import Experiment, Composition, Property, CalculatedFeature
 
 
 def main():
@@ -25,7 +26,7 @@ def main():
     
     # 创建测试数据库（使用内存数据库）
     print("\n1. 初始化数据库...")
-    db = CermetDatabaseV2(db_path=':memory:')  # 内存数据库，测试后自动销毁
+    db = DatabaseManager(db_path=':memory:')  # 内存数据库，测试后自动销毁
     db.create_tables()
     print("✅ 数据库表创建成功")
     

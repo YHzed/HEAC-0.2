@@ -98,15 +98,17 @@ class InverseDesigner:
         
         def objective(trial):
             # 1. 采样成分（改进的Dirichlet分布方法）
+            # 使用log-normal分布采样，然后归一化
+            # 为了更容易满足 5% - 35% 的HEA成分约束，通过缩小采样范围使得初始解就在可行域附近
+            # log10(0.1) = -1.0, log10(0.3) ≈ -0.52
+            # 这样raw值的比最大约为 3:1，归一化后不会出现极端大小
             n_elements = len(allowed_elements)
             
             # 使用log-normal分布采样，然后归一化
-            # 调整采样范围以倾向于 5% - 35% 的区间
-            # log10(0.05) ≈ -1.3, log10(0.35) ≈ -0.45
             raw_fractions = []
             for i, el in enumerate(allowed_elements):
-                # 在log空间采样以获得更好的分布
-                log_val = trial.suggest_float(f'log_frac_{el}', -1.3, -0.45) 
+                # 缩小范围以提高搜索效率
+                log_val = trial.suggest_float(f'log_frac_{el}', -1.0, -0.52) 
                 raw_fractions.append(10 ** log_val)
             
             # 归一化
@@ -119,6 +121,18 @@ class InverseDesigner:
             ceramic_vol = trial.suggest_float('ceramic_vol', *ceramic_vol_range)
             sinter_temp = trial.suggest_float('sinter_temp', *sinter_temp_range)
             
+            # 成分预约束检查：如果有太小的成分，直接严重惩罚，避免ModelX在极端区域外推
+            min_frac_violation = 0
+            for frac in fractions:
+                if frac < 0.05:
+                    min_frac_violation += (0.05 - frac) * 10000
+                elif frac > 0.35:
+                    min_frac_violation += (frac - 0.35) * 10000
+            
+            # 如果违反成分约束太严重，直接返回，节省计算
+            if min_frac_violation > 0.1: # 允许一点点违反供梯度探索，但太大就截断
+                 return -10000 - min_frac_violation, -10000 - min_frac_violation
+
             # 3. Proxy预测（激活真实预测 + 缓存优化）
             try:
                 # 使用缓存的Matminer计算
@@ -155,27 +169,20 @@ class InverseDesigner:
                 print(f"Prediction failed: {e}")
                 return -10000, -10000
             
-            # 6. 约束惩罚
-            penalty = 0
+            # 6. 约束惩罚 (大幅增加权重)
+            penalty = min_frac_violation # 加上之前的成分惩罚
             
-            # HV约束
+            # HV约束 (目标HV约1500，稍微违反一点点就是几十HV，惩罚应该是同量级或更大)
             if hv < target_hv_range[0]:
-                penalty += (target_hv_range[0] - hv) * 10
+                penalty += (target_hv_range[0] - hv) * 50
             elif hv > target_hv_range[1]:
-                penalty += (hv - target_hv_range[1]) * 10
+                penalty += (hv - target_hv_range[1]) * 50
             
-            # KIC约束
+            # KIC约束 (目标KIC约10，违反0.1就是大事，需要放大很多倍)
             if kic < target_kic_range[0]:
-                penalty += (target_kic_range[0] - kic) * 100
+                penalty += (target_kic_range[0] - kic) * 2000
             elif kic > target_kic_range[1]:
-                penalty += (kic - target_kic_range[1]) * 100
-
-            # 成分约束 (5% - 35%)
-            for el, frac in composition.items():
-                if frac < 0.05:
-                    penalty += (0.05 - frac) * 1000  # 强惩罚太小的
-                elif frac > 0.35:
-                    penalty += (frac - 0.35) * 1000  # 强惩罚太大的
+                penalty += (kic - target_kic_range[1]) * 2000
             
             return hv - penalty, kic - penalty
         
@@ -185,6 +192,10 @@ class InverseDesigner:
         # 提取Pareto最优解
         solutions = []
         for trial in study.best_trials:
+            # 过滤掉惩罚过大的解 (例如HV为负数的解)
+            if trial.values[0] < 0 or trial.values[1] < 0:
+                continue
+
             # 重建成分 (根据log-normal采样逻辑)
             raw_fractions = []
             for el in allowed_elements:
@@ -201,6 +212,10 @@ class InverseDesigner:
             for i, el in enumerate(allowed_elements):
                 composition[el] = raw_fractions[i] / total
             
+            # 再次检查硬约束，过滤掉微小违反的漏网之鱼
+            if any(f < 0.045 for f in composition.values()): # 稍微放宽一点点避免全部过滤
+                continue
+
             solution = DesignSolution(
                 composition=composition,
                 grain_size=trial.params['grain_size'],

@@ -23,7 +23,7 @@ import warnings
 # Matminer for featurization
 try:
     from matminer.featurizers.composition import ElementProperty
-    from pymatgen.core import Composition
+    from pymatgen.core import Composition, Element
     MATMINER_AVAILABLE = True
 except ImportError:
     MATMINER_AVAILABLE = False
@@ -134,9 +134,7 @@ class FeatureInjector:
             'formation_energy': 'formation_energy_model.pkl',
             'lattice': 'lattice_model.pkl',
             'magnetic_moment': 'magnetic_moment_model.pkl',
-            'bulk_modulus': 'bulk_modulus_model.pkl',
-            'shear_modulus': 'shear_modulus_model.pkl',
-            'brittleness': 'brittleness_model.pkl'
+            # 注意: bulk_modulus, shear_modulus, brittleness 未训练,已移除
         }
         
         loaded_count = 0
@@ -175,16 +173,16 @@ class FeatureInjector:
             self.featurizer = ElementProperty.from_preset("magpie")
             print("✅ 特征化器已准备就绪")
     
-    def featurize_composition(self, composition: Dict[str, float], model_name: str = None) -> Optional[np.ndarray]:
+    def featurize_composition(self, composition: Dict[str, float], model_name: str = None) -> Optional[pd.DataFrame]:
         """
-        将成分字典转换为特征向量
+        将成分字典转换为特征向量（返回 DataFrame）
         
         Args:
             composition: 成分字典
             model_name: 模型名称（用于特征维度适配）
             
         Returns:
-            特征数组 (1, n_features)
+            特征 DataFrame (1, n_features) 带有列名
         """
         if not MATMINER_AVAILABLE:
             warnings.warn("Matminer不可用，无法进行特征化")
@@ -212,57 +210,61 @@ class FeatureInjector:
                     if hasattr(first_step, 'n_features_in_'):
                         expected_dim = first_step.n_features_in_
             
-            # 如果没有加载feature_names或没有期望维度，直接返回magpie特征
-            if self.feature_names is None or expected_dim is None:
-                return np.array(magpie_features).reshape(1, -1)
-            
-            # 根据期望维度生成特征
-            if expected_dim == 250:
-                # 使用完整的feature_names
-                full_features = np.zeros((1, len(self.feature_names)))
-                magpie_labels = self.featurizer.feature_labels()
-                
-                for i, fname in enumerate(self.feature_names):
-                    if fname in magpie_labels:
-                        idx = magpie_labels.index(fname)
-                        full_features[0, i] = magpie_features[idx]
-                
-                return full_features
-            
-            elif expected_dim == 246:
-                # 晶格模型：移除了4个零方差特征
-                # 直接使用250维特征，让模型的内部VarianceThreshold处理
-                # 但这会导致错误，所以我们需要手动移除这4个特征
-                
-                # 先生成250维
-                full_features_250 = np.zeros((1, 250))
-                magpie_labels = self.featurizer.feature_labels()
-                
-                for i, fname in enumerate(self.feature_names):
-                    if fname in magpie_labels:
-                        idx = magpie_labels.index(fname)
-                        full_features_250[0, i] = magpie_features[idx]
-                
-                # 找出非零方差的特征索引（简化：直接返回前246维）
-                # 更好的方法是从训练时保存哪些特征被移除了
-                # 临时方案：使用前246个非零列
-                non_zero_mask = (full_features_250 != 0).flatten()
-                if non_zero_mask.sum() >= 246:
-                    # 选择前246个非零特征
-                    non_zero_indices = np.where(non_zero_mask)[0][:246]
-                    return full_features_250[:, non_zero_indices]
-                else:
-                    # 如果非零特征不足246个，补零至246
-                    return full_features_250[:, :246]
-            
+            # Determine correct feature labels
+            if self.feature_names is not None:
+                base_labels = self.feature_names
             else:
-                # 其他维度：返回对应大小的零数组（回退方案）
-                warnings.warn(f"未知的特征维度 {expected_dim}，使用零填充")
-                return np.zeros((1, expected_dim))
+                base_labels = self.featurizer.feature_labels()
+
+            # Logic for dimensions
+            if expected_dim:
+                # Case 1: Lattice Model (246 features)
+                if expected_dim == 246:
+                    # Slice features to 246
+                    # Assumes the first 246 features are the ones used (standard Matminer order)
+                    sliced_features = magpie_features[:246]
+                    
+                    # Prepare labels
+                    if len(base_labels) >= 246:
+                        sliced_labels = base_labels[:246]
+                    else:
+                        # Fallback labels if not enough
+                        sliced_labels = [f"Feature_{i}" for i in range(246)]
+                        
+                    return pd.DataFrame([sliced_features], columns=sliced_labels)
+                
+                # Case 2: Standard (250 features)
+                elif expected_dim == 250:
+                    # Use full features, truncated or padded to 250 if necessary
+                    final_features = np.zeros(250)
+                    n_avail = min(len(magpie_features), 250)
+                    final_features[:n_avail] = magpie_features[:n_avail]
+                    
+                    # Prepare labels
+                    if len(base_labels) >= 250:
+                        final_labels = base_labels[:250]
+                    else:
+                         final_labels = [f"Feature_{i}" for i in range(250)]
+                         
+                    return pd.DataFrame([final_features], columns=final_labels)
+
+            # Fallback: Return raw features if no expected_dim or unknown dim
+            # If we have saved feature names, try to respect them
+            if self.feature_names is not None:
+                n_names = len(self.feature_names)
+                final_features = np.zeros(n_names)
+                n_avail = min(len(magpie_features), n_names)
+                final_features[:n_avail] = magpie_features[:n_avail]
+                return pd.DataFrame([final_features], columns=self.feature_names)
             
+            # Default: raw output
+            return pd.DataFrame([magpie_features], columns=base_labels)
+
         except Exception as e:
             warnings.warn(f"特征化失败: {e}")
             return None
+            
+
     
     def predict_formation_energy(self, composition: Dict[str, float]) -> Optional[float]:
         """
@@ -282,7 +284,13 @@ class FeatureInjector:
             return None
         
         try:
-            ef_pred = self.models['formation_energy'].predict(features)[0]
+            # 将 DataFrame 转换为 numpy 数组以避免特征名称验证
+            if isinstance(features, pd.DataFrame):
+                features_array = features.values
+            else:
+                features_array = features
+            
+            ef_pred = self.models['formation_energy'].predict(features_array)[0]
             return float(ef_pred)
         except Exception as e:
             warnings.warn(f"形成能预测失败: {e}")
@@ -310,8 +318,14 @@ class FeatureInjector:
             return None
         
         try:
+            # 将 DataFrame 转换为 numpy 数组以避免特征名称验证
+            if isinstance(features, pd.DataFrame):
+                features_array = features.values
+            else:
+                features_array = features
+            
             # 模型预测：原子体积 (Å³/atom)
-            volume_per_atom = self.models['lattice'].predict(features)[0]
+            volume_per_atom = self.models['lattice'].predict(features_array)[0]
             
             # 转换为FCC晶格常数: a = (4 × V_atom)^(1/3)
             # FCC晶胞包含4个原子，体积 V_cell = 4 × V_atom
@@ -372,6 +386,128 @@ class FeatureInjector:
         mismatch = abs(neighbor_dist_fcc - ceramic_neighbor) / ceramic_neighbor
         
         return float(mismatch)
+
+    def calculate_coherent_potential(self, pred_lattice_fcc: float, ceramic_type: str = 'WC') -> float:
+        """
+        Calculate Coherent Potential (Refined Mismatch)
+        Formula: |a_binder/sqrt(2) - a_carbide| / a_carbide
+        """
+        # FCC plane spacing for coherent interface with simple hexagonal or cubic carbide
+        # This assumes specific orientation relationship (e.g. Kurdjumov-Sachs or Nishiyama-Wassermann)
+        # Here we follow the user's formula: delta = |a_fcc/sqrt(2) - a_wc| / a_wc
+        
+        # Get ceramic lattice parameter
+        ceramic_type_clean = str(ceramic_type).strip().upper()
+        # Initial lookup
+        ceramic_a = self.WC_LATTICE_A # Default
+        
+        # Try to find specific 'lattice_a' from CERAMIC_PARAMS
+        found = False
+        for key, params in self.CERAMIC_PARAMS.items():
+             if key.upper() == ceramic_type_clean:
+                 ceramic_a = params['lattice_a']
+                 found = True
+                 break
+        
+        if not found and ceramic_type_clean == 'WC':
+             ceramic_a = self.WC_LATTICE_A
+
+        term1 = pred_lattice_fcc / (2**0.5)
+        delta = abs(term1 - ceramic_a) / ceramic_a
+        return float(delta)
+
+    def calculate_vegards_lattice(self, composition: Dict[str, float]) -> Optional[float]:
+        """
+        Calculate theoretical lattice parameter based on Vegard's Law (linear rule of mixtures).
+        Uses simple atomic radii approximation: a_approx = 4/sqrt(2) * r_avg
+        """
+        # Atomic radii (Goldschmidt radii in Angstroms) for common HEA elements
+        # Source: Empirical or standard tables
+        ATOMIC_RADII = {
+            'Co': 1.25, 'Cr': 1.28, 'Fe': 1.26, 'Ni': 1.24, 'Cu': 1.28,
+            'Al': 1.43, 'Ti': 1.47, 'V': 1.34, 'Mn': 1.27, 'Mo': 1.39,
+            'W': 1.39, 'Nb': 1.46, 'Ta': 1.46, 'Zr': 1.60, 'Hf': 1.59,
+            'C': 0.77, 'N': 0.75, 'O': 0.73, 'Si': 1.17
+        }
+        
+        try:
+            r_avg = 0.0
+            total_frac = sum(composition.values())
+            
+            for elem, frac in composition.items():
+                if elem in ATOMIC_RADII:
+                    r_avg += ATOMIC_RADII[elem] * (frac / total_frac)
+                else:
+                    # Fallback average if element unknown (approx 1.3)
+                    r_avg += 1.3 * (frac / total_frac)
+            
+            # theoretical a = 2*sqrt(2)*r for FCC close packing
+            # a = 4*r / sqrt(2) = 2.828 * r
+            a_veg = 2 * (2**0.5) * r_avg
+            return float(a_veg)
+        except:
+            return None
+
+    def calculate_coherent_potential(self, pred_lattice_fcc: float, ceramic_type: str = 'WC') -> float:
+        """
+        Calculate Coherent Potential (Refined Mismatch)
+        Formula: |a_binder/sqrt(2) - a_carbide| / a_carbide
+        """
+        # FCC plane spacing for coherent interface with simple hexagonal or cubic carbide
+        # This assumes specific orientation relationship (e.g. Kurdjumov-Sachs or Nishiyama-Wassermann)
+        # Here we follow the user's formula: delta = |a_fcc/sqrt(2) - a_wc| / a_wc
+        
+        # Get ceramic lattice parameter
+        ceramic_type_clean = str(ceramic_type).strip().upper()
+        # Initial lookup
+        ceramic_a = self.WC_LATTICE_A # Default
+        
+        # Try to find specific 'lattice_a' from CERAMIC_PARAMS
+        found = False
+        for key, params in self.CERAMIC_PARAMS.items():
+             if key.upper() == ceramic_type_clean:
+                 ceramic_a = params['lattice_a']
+                 found = True
+                 break
+        
+        if not found and ceramic_type_clean == 'WC':
+             ceramic_a = self.WC_LATTICE_A
+
+        term1 = pred_lattice_fcc / (2**0.5)
+        delta = abs(term1 - ceramic_a) / ceramic_a
+        return float(delta)
+
+    def calculate_vegards_lattice(self, composition: Dict[str, float]) -> Optional[float]:
+        """
+        Calculate theoretical lattice parameter based on Vegard's Law (linear rule of mixtures).
+        Uses simple atomic radii approximation: a_approx = 4/sqrt(2) * r_avg
+        """
+        # Atomic radii (Goldschmidt radii in Angstroms) for common HEA elements
+        # Source: Empirical or standard tables
+        ATOMIC_RADII = {
+            'Co': 1.25, 'Cr': 1.28, 'Fe': 1.26, 'Ni': 1.24, 'Cu': 1.28,
+            'Al': 1.43, 'Ti': 1.47, 'V': 1.34, 'Mn': 1.27, 'Mo': 1.39,
+            'W': 1.39, 'Nb': 1.46, 'Ta': 1.46, 'Zr': 1.60, 'Hf': 1.59,
+            'C': 0.77, 'N': 0.75, 'O': 0.73, 'Si': 1.17
+        }
+        
+        try:
+            r_avg = 0.0
+            total_frac = sum(composition.values())
+            
+            for elem, frac in composition.items():
+                if elem in ATOMIC_RADII:
+                    r_avg += ATOMIC_RADII[elem] * (frac / total_frac)
+                else:
+                    # Fallback average if element unknown (approx 1.3)
+                    r_avg += 1.3 * (frac / total_frac)
+            
+            # theoretical a = 2*sqrt(2)*r for FCC close packing
+            # a = 4*r / sqrt(2) = 2.828 * r
+            a_veg = 2 * (2**0.5) * r_avg
+            return float(a_veg)
+        except:
+            return None
     
     def predict_magnetic_moment(self, composition: Dict[str, float]) -> Optional[float]:
         """
@@ -394,9 +530,15 @@ class FeatureInjector:
             return None
         
         try:
+            # 将 DataFrame 转换为 numpy 数组以避免特征名称验证
+            if isinstance(features, pd.DataFrame):
+                features_array = features.values
+            else:
+                features_array = features
+            
             # 模型预测：直接输出归一化的磁矩 (μB/atom)
             # 新训练的模型已经在训练时进行了归一化处理
-            mag_per_atom = self.models['magnetic_moment'].predict(features)[0]
+            mag_per_atom = self.models['magnetic_moment'].predict(features_array)[0]
             
             return float(mag_per_atom)
         except Exception as e:
@@ -419,17 +561,23 @@ class FeatureInjector:
         if features is None:
             return results
         
+        # 将 DataFrame 转换为 numpy 数组以避免特征名称验证
+        if isinstance(features, pd.DataFrame):
+            features_array = features.values
+        else:
+            features_array = features
+        
         # 预测体模量
         if 'bulk_modulus' in self.models:
             try:
-                results['bulk'] = float(self.models['bulk_modulus'].predict(features)[0])
+                results['bulk'] = float(self.models['bulk_modulus'].predict(features_array)[0])
             except Exception as e:
                 warnings.warn(f"体模量预测失败: {e}")
         
         # 预测剪切模量
         if 'shear_modulus' in self.models:
             try:
-                results['shear'] = float(self.models['shear_modulus'].predict(features)[0])
+                results['shear'] = float(self.models['shear_modulus'].predict(features_array)[0])
             except Exception as e:
                 warnings.warn(f"剪切模量预测失败: {e}")
         
@@ -458,8 +606,14 @@ class FeatureInjector:
             if features is None:
                 return None
             
+            # 将 DataFrame 转换为 numpy 数组以避免特征名称验证
+            if isinstance(features, pd.DataFrame):
+                features_array = features.values
+            else:
+                features_array = features
+            
             try:
-                pred = self.models['brittleness'].predict(features)[0]
+                pred = self.models['brittleness'].predict(features_array)[0]
                 return float(pred)
             except Exception as e:
                 warnings.warn(f"Pugh比预测失败: {e}")
@@ -488,6 +642,41 @@ class FeatureInjector:
         # 中心点在1.75
         brittleness = 1 / (1 + np.exp(2 * (pugh_ratio - 1.75)))
         return float(brittleness)
+
+    def calculate_vec(self, composition: Dict[str, float]) -> Optional[float]:
+        """
+        Calculate Valence Electron Concentration (VEC).
+        Weighted average of valence electrons.
+        """
+        if not composition:
+            return None
+            
+        # VEC Table for common HEA elements
+        vec_table = {
+            'Sc': 3, 'Y': 3, 'La': 3,
+            'Ti': 4, 'Zr': 4, 'Hf': 4,
+            'V': 5, 'Nb': 5, 'Ta': 5,
+            'Cr': 6, 'Mo': 6, 'W': 6,
+            'Mn': 7, 'Tc': 7, 'Re': 7,
+            'Fe': 8, 'Ru': 8, 'Os': 8,
+            'Co': 9, 'Rh': 9, 'Ir': 9,
+            'Ni': 10, 'Pd': 10, 'Pt': 10,
+            'Cu': 11, 'Ag': 11, 'Au': 11,
+            'Al': 3, 'Si': 4, 'B': 3, 'C': 4, 'N': 5
+        }
+        
+        total_atoms = sum(composition.values())
+        vec_sum = 0.0
+        
+        for el, amt in composition.items():
+            fraction = amt / total_atoms
+            v = vec_table.get(el)
+            # If element is unknown, return None to avoid misleading values
+            if v is None:
+                return None
+            vec_sum += fraction * v
+            
+        return vec_sum
     
     def inject_features(self, df: pd.DataFrame, 
                        comp_col: str = 'binder_composition',
@@ -533,8 +722,17 @@ class FeatureInjector:
         new_features = {
             'pred_formation_energy': [],
             'pred_lattice_param': [],
-            'lattice_mismatch_wc': [],
-            'pred_magnetic_moment': []
+            'lattice_mismatch': [],
+            'pred_magnetic_moment': [],
+            'lattice_distortion': [],     # Deviation from Vegard's Law
+            'coherent_potential': [],     # Relative mismatch (|a_fcc/sqrt(2) - a_carbide| / a_carbide)
+            'is_coherent': [],            # Binary flag (< 1%)
+            'vec_binder': [],             # Valence Electron Concentration
+            'magpie_mean_atomic_mass': [],
+            'magpie_std_electronegativity': [],
+            'Ceramic_MagpieData mean AtomicWeight': [],
+            'Ceramic_MagpieData std Electronegativity': [],
+            'Ceramic_MagpieData minimum Number': []
         }
         
         # 统计
@@ -582,14 +780,106 @@ class FeatureInjector:
             if lattice is not None:
                 # 传递ceramic_type进行动态失配度计算
                 mismatch = self.calculate_lattice_mismatch(lattice, ceramic_type)
-                new_features['lattice_mismatch_wc'].append(mismatch)
+                new_features['lattice_mismatch'].append(mismatch)
+                
+                # Coherent Potential (Refined Mismatch)
+                # Formula: |a_binder/sqrt(2) - a_carbide| / a_carbide
+                cp = self.calculate_coherent_potential(lattice, ceramic_type)
+                new_features['coherent_potential'].append(cp)
+                new_features['is_coherent'].append(bool(cp < 0.01)) # Threshold 1%
+
+                # Lattice Distortion (Solid Solution Strengthening Index)
+                # |a_pred - a_Vegard|
+                a_vegard = self.calculate_vegards_lattice(composition)
+                if a_vegard is not None:
+                    distortion = abs(lattice - a_vegard)
+                    new_features['lattice_distortion'].append(distortion)
+                else:
+                    new_features['lattice_distortion'].append(np.nan)
+
             else:
-                new_features['lattice_mismatch_wc'].append(np.nan)
+                new_features['lattice_mismatch'].append(np.nan)
+                new_features['coherent_potential'].append(np.nan)
+                new_features['is_coherent'].append(False)
+                new_features['lattice_distortion'].append(np.nan)
             
             # 3. 磁矩
             magmom = self.predict_magnetic_moment(composition)
             new_features['pred_magnetic_moment'].append(magmom)
             
+            # 4. 其他物理特征 (VEC, Mass, Electronegativity)
+            # VEC
+            vec = self.calculate_vec(composition)
+            new_features['vec_binder'].append(vec)
+            
+            # Matminer-like Features (Lightweight)
+            try:
+                total_atoms = sum(composition.values())
+                mass_sum = 0.0
+                mean_x = 0.0
+                var_x_sum = 0.0
+                
+                # First pass: mean Calculation
+                for el, amt in composition.items():
+                    frac = amt / total_atoms
+                    elem = Element(el)
+                    mass_sum += frac * elem.atomic_mass
+                    mean_x += frac * elem.X # Electronegativity
+                
+                new_features['magpie_mean_atomic_mass'].append(mass_sum)
+                
+                # Second pass: Std Dev Calculation
+                for el, amt in composition.items():
+                    frac = amt / total_atoms
+                    elem = Element(el)
+                    var_x_sum += frac * ((elem.X - mean_x) ** 2)
+                    
+                std_x = np.sqrt(var_x_sum)
+                new_features['magpie_std_electronegativity'].append(std_x)
+                
+            except Exception as e:
+                # Fallback if element not found in Pymatgen or X is None
+                new_features['magpie_mean_atomic_mass'].append(np.nan)
+                new_features['magpie_std_electronegativity'].append(np.nan)
+
+            # 5. Ceramic Features (Lightweight)
+            # Calculated for 'ceramic_type' (e.g. "WC")
+            try:
+                cer_comp = self.composition_parser.parse(ceramic_type)
+                if cer_comp:
+                     c_total = sum(cer_comp.values())
+                     c_mass_sum = 0.0
+                     c_mean_x = 0.0
+                     c_var_x_sum = 0.0
+                     c_min_z = 999.0
+                     
+                     # First Pass
+                     for el, amt in cer_comp.items():
+                         frac = amt / c_total
+                         elem = Element(el)
+                         c_mass_sum += frac * elem.atomic_mass
+                         c_mean_x += frac * elem.X
+                         if elem.Z < c_min_z:
+                             c_min_z = elem.Z
+                     
+                     new_features['Ceramic_MagpieData mean AtomicWeight'].append(c_mass_sum)
+                     new_features['Ceramic_MagpieData minimum Number'].append(c_min_z)
+
+                     # Second Pass
+                     for el, amt in cer_comp.items():
+                         frac = amt / c_total
+                         elem = Element(el)
+                         c_var_x_sum += frac * ((elem.X - c_mean_x) ** 2)
+
+                     c_std_x = np.sqrt(c_var_x_sum)
+                     new_features['Ceramic_MagpieData std Electronegativity'].append(c_std_x)
+                else:
+                    raise ValueError("Empty Ceramic Comp")
+            except:
+                 new_features['Ceramic_MagpieData mean AtomicWeight'].append(np.nan)
+                 new_features['Ceramic_MagpieData std Electronegativity'].append(np.nan)
+                 new_features['Ceramic_MagpieData minimum Number'].append(np.nan)
+
             success_count += 1
         
         # 检查列名冲突并发出警告

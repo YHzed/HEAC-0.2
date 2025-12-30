@@ -107,12 +107,26 @@ class FeatureEngine:
             # === 优先级 3: Matminer (可选) ===
             if use_matminer:
                 try:
+                    # 1. 计算精简特征（向后兼容）
                     matminer_results = self.calculate_matminer_features(binder_formula)
                     result['matminer_features'] = matminer_results
+                    
+                    # 2. 计算完整特征
+                    ceramic_full = self.calculate_full_magpie_features(ceramic_formula, 'Ceramic')
+                    binder_full = self.calculate_full_magpie_features(binder_formula, 'Binder')
+                    
+                    result['full_matminer_features'] = {
+                        'ceramic': ceramic_full,
+                        'binder': binder_full
+                    }
+                    
                     result['metadata']['has_matminer'] = True
+                    result['metadata']['has_full_matminer'] = True
+                    
                 except Exception as e:
                     logger.warning(f"Matminer calculation failed: {e}")
                     result['matminer_features'] = {}
+                    result['full_matminer_features'] = {}
             
             return result
             
@@ -232,9 +246,51 @@ class FeatureEngine:
             logger.error(f"Error in physics feature calculation: {e}")
             return features
     
+    def calculate_full_magpie_features(self, composition_str: str, prefix: str) -> Dict[str, float]:
+        """
+        计算完整的 Magpie 特征（110+ 个特征）
+        
+        Args:
+            composition_str: 化学式
+            prefix: 前缀 (e.g., 'Ceramic', 'Binder')
+            
+        Returns:
+            dict: {
+                'Ceramic_MagpieData minimum Number': value,
+                ...
+            }
+        """
+        features = {}
+        if not composition_str:
+            return features
+            
+        try:
+            from matminer.featurizers.composition import ElementProperty
+            from pymatgen.core import Composition
+            
+            # 使用 Magpie 预设
+            featurizer = ElementProperty.from_preset("magpie")
+            
+            # 计算特征
+            comp = Composition(composition_str)
+            feature_values = featurizer.featurize(comp)
+            feature_labels = featurizer.feature_labels()
+            
+            # 构建带前缀的字典 (匹配 hea_processed.csv 格式)
+            # 格式: "{prefix}_MagpieData {label}"
+            for label, value in zip(feature_labels, feature_values):
+                key = f"{prefix}_MagpieData {label}"
+                features[key] = value
+                
+            return features
+            
+        except Exception as e:
+            logger.warning(f"Full Magpie calculation failed for {composition_str}: {e}")
+            return {}
+
     def calculate_matminer_features(self, binder_formula: str) -> Dict[str, float]:
         """
-        优先级 3: Matminer 化学特征（可选）
+        优先级 3: Matminer 化学特征（精简版，向后兼容）
         
         Args:
             binder_formula: 粘结相化学式
@@ -256,9 +312,11 @@ class FeatureEngine:
             feature_values = featurizer.featurize(comp)
             feature_names = featurizer.feature_labels()
             
-            # 构建字典
-            for name, value in zip(feature_names, feature_values):
-                features[f'magpie_{name.lower().replace(" ", "_")}'] = value
+            # 仅提取关键特征用于精简显示
+            feature_map = {name: val for name, val in zip(feature_names, feature_values)}
+            
+            features['magpie_mean_atomic_mass'] = feature_map.get('mean AtomicWeight')
+            features['magpie_std_electronegativity'] = feature_map.get('avg_dev Electronegativity')
             
             return features
             

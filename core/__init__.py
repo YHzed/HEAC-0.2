@@ -109,16 +109,20 @@ __all__ = [
 
 # === 新数据库架构 v2.0 ===
 try:
-    from .db_manager import CermetDB
-    from .db_models_v2 import CermetDatabaseV2
+    from .db_manager import DatabaseManager, CermetDB
+    from .db_models import Experiment, Composition, Property, CalculatedFeature
     from .composition_parser import CompositionParser
     from .physics_calculator import PhysicsCalculator
     from .feature_engine import FeatureEngine
     from .proxy_model_predictor import ProxyModelPredictor
     from .data_extractor import DataExtractor
     _HAS_DB_V2 = True
+    
+    # Alias for backward compatibility if needed, though we prefer DatabaseManager
+    CermetDatabaseV2 = DatabaseManager
 except ImportError as e:
-    print(f"Info: Database v2 modules not fully loaded: {e}")
+    print(f"Info: Database modules not fully loaded: {e}")
+    DatabaseManager = None
     CermetDB = None
     CermetDatabaseV2 = None
     CompositionParser = None

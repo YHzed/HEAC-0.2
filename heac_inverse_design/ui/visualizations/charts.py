@@ -148,26 +148,73 @@ def plot_process_parameters(solution) -> go.Figure:
     
     fig = go.Figure()
     
+    # 陶瓷体积 (0-1)
     fig.add_trace(go.Bar(
-        x=plot_keys,
-        y=plot_values,
-        marker=dict(
-            color=['#636EFA', '#EF553B', '#00CC96'],
-            opacity=0.7
-        ),
-        # 显示真实值
-        text=[f"{v:.1f}" for v in real_values],
-        textposition='outside',
-        # 自定义hover信息
-        hovertemplate='%{x}<br>Value: %{text}<extra></extra>'
+        x=['Ceramic Vol %'],
+        y=[solution.ceramic_vol * 100],
+        name='Vol %',
+        marker_color='#636EFA',
+        text=[f"{solution.ceramic_vol*100:.1f}%"],
+        textposition='auto',
+        hovertemplate='<b>Ceramic Vol</b>: %{text}<extra></extra>'
     ))
     
+    # 晶粒尺寸 (0.5-5) - 使用次坐标轴
+    fig.add_trace(go.Bar(
+        x=['Grain Size (μm)'],
+        y=[solution.grain_size],
+        name='Grain Size',
+        marker_color='#EF553B',
+        text=[f"{solution.grain_size:.2f}"],
+        textposition='auto',
+        hovertemplate='<b>Grain Size</b>: %{text} μm<extra></extra>',
+        yaxis='y2'
+    ))
+    
+    # 烧结温度 (1300-1600) - 使用第三坐标轴或标准化
+    # 为了简化，我们把温度作为单独的指标或者让它除以100显示，但Tooltip显示真实的
+    # 最好的办法是使用Subplots或者Multiple Y-axes，但Plotly Bar chart多Y轴比较拥挤
+    # 既然只有三个，我们用Normalized Bar Chart (Percent of Max Range)
+    
+    # 重新设计：使用三个Gauge图或者Bullet Chart可能更好，但为了保持Bar风格，我们用Separate Subplots
+    from plotly.subplots import make_subplots
+    fig = make_subplots(rows=1, cols=3, 
+                        shared_yaxes=False,
+                        subplot_titles=('Ceramic Vol %', 'Grain Size (μm)', 'Sinter Temp (°C)'))
+
+    fig.add_trace(go.Bar(
+        x=['Value'], y=[solution.ceramic_vol * 100],
+        marker_color='#636EFA',
+        text=[f"{solution.ceramic_vol*100:.1f}"],
+        textposition='auto',
+        name='Vol %'
+    ), row=1, col=1)
+
+    fig.add_trace(go.Bar(
+        x=['Value'], y=[solution.grain_size],
+        marker_color='#EF553B',
+        text=[f"{solution.grain_size:.2f}"],
+        textposition='auto',
+        name='Grain Size'
+    ), row=1, col=2)
+
+    fig.add_trace(go.Bar(
+        x=['Value'], y=[solution.sinter_temp],
+        marker_color='#00CC96',
+        text=[f"{solution.sinter_temp:.0f}"],
+        textposition='auto',
+        name='Temp'
+    ), row=1, col=3)
+
     fig.update_layout(
-        title="Process Parameters",
-        yaxis_title="Value (scaled)",
-        height=300,
-        showlegend=False
+        height=250,
+        showlegend=False,
+        margin=dict(l=20, r=20, t=40, b=20),
     )
+    # Update y-axes ranges to look good (optional)
+    fig.update_yaxes(range=[0, 100], row=1, col=1)
+    fig.update_yaxes(range=[0, 10], row=1, col=2)
+    fig.update_yaxes(range=[1200, 1700], row=1, col=3) # Temperature range optimization
     
     return fig
 

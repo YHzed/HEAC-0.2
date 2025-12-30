@@ -1,4 +1,6 @@
+# ============================================
 # Python
+# ============================================
 __pycache__/
 *.py[cod]
 *$py.class
@@ -8,46 +10,186 @@ __pycache__/
 dist/
 build/
 *.egg
+*.pyc
+*.pyo
 
+# ============================================
 # Virtual Environment
+# ============================================
 .venv/
 venv/
 ENV/
 env/
+.conda/
+conda-meta/
 
-# IDE
+# ============================================
+# IDE & Editors
+# ============================================
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
 
+# ============================================
 # Environment Variables - CRITICAL: Protect API Keys
+# ============================================
 .env
+.env.local
+.env.*.local
 
+# ============================================
 # Cache and Temporary Files
+# ============================================
 *.log
 .pytest_cache/
 .coverage
 htmlcov/
 catboost_info/
+.mypy_cache/
+.ruff_cache/
+.tox/
+*.tmp
+*.temp
+*.bak
+*.swp
 
+# ============================================
+# Jupyter Notebook
+# ============================================
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ============================================
 # Materials Project Cache
+# ============================================
 core/data/mp_cache/
 
-# Model Files (optional - uncomment if models are large)
+# ============================================
+# Model Files
+# ============================================
 *.h5
 *.pkl
+*.pickle
+*.joblib
+*.pt
+*.pth
+*.onnx
 saved_models/
 model/
+models/*.pkl
+models/*.h5
 
-# OS
-.DS_Store
-Thumbs.db
+# ============================================
+# Database Files
+# ============================================
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
 
-# Project Specific
-activity_logs.json
+# Keep example databases if needed (uncomment if you have template DBs)
+# !example.db
+# !template.db
 
-# Training Data (large files)
+# ============================================
+# Data Files (large files)
+# ============================================
+# Training Data
 training data/zenodo/*.csv
 training data/*.csv
+training data/*.xlsx
+training data/*.xls
+
+# Datasets
+datasets/*.csv
+datasets/*.xlsx
+datasets/*.xls
+datasets/*.parquet
+
+# Compressed files
 *.zip
+*.tar.gz
+*.rar
+*.7z
+
+# ============================================
+# Output & Export Files
+# ============================================
+# Temporary outputs
+temp_*.csv
+temp_*.py
+temp_*.txt
+*_temp.*
+*_tmp.*
+
+# Test outputs
+test_output.txt
+validation_results.txt
+*_test_output.*
+
+# Export files (uncomment specific patterns if needed)
+# exports/
+# *_export.csv
+# *_export.xlsx
+
+# ============================================
+# OS Specific
+# ============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ============================================
+# Project Specific
+# ============================================
+activity_logs.json
+cermet_analysis_report.md
+
+# Analysis scripts (temporary)
+analyze_*.py
+check_*.py
+fix_*.py
+extract_*.py
+*_patch.py
+
+# ============================================
+# Documentation (generated)
+# ============================================
+# Uncomment if you generate docs
+# docs/_build/
+# docs/.doctrees/
+# site/
+
+# ============================================
+# Docker
+# ============================================
+# Keep Dockerfile and .dockerignore but ignore build artifacts
+# docker-compose.override.yml
+
+# ============================================
+# Git
+# ============================================
+*.orig
+*.rej
