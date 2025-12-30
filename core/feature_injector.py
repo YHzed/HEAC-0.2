@@ -113,6 +113,18 @@ class FeatureInjector:
         
         # Matminer特征化器
         self.featurizer = None
+        self.yang_featurizer = None
+        self.magpie_featurizer = None
+        
+        if MATMINER_AVAILABLE:
+            try:
+                # YangSolidSolution provides HEA features: Omega, Delta
+                self.yang_featurizer = YangSolidSolution()
+                # ElementProperty for VEC and others (Optional, we have lightweight manual calc too)
+                self.magpie_featurizer = ElementProperty.from_preset("magpie")
+                print("✅ Matminer HEA模块已加载 (YangSolidSolution, ElementProperty)")
+            except Exception as e:
+                warnings.warn(f"Matminer HEA模块加载失败: {e}")
         
         print(f"🔧 特征注入器已初始化")
         print(f"📁 模型目录: {self.model_dir}")
@@ -732,7 +744,9 @@ class FeatureInjector:
             'magpie_std_electronegativity': [],
             'Ceramic_MagpieData mean AtomicWeight': [],
             'Ceramic_MagpieData std Electronegativity': [],
-            'Ceramic_MagpieData minimum Number': []
+            'Ceramic_MagpieData minimum Number': [],
+            'yang_delta': [],             # Matminer Tang Delta
+            'yang_omega': []              # Matminer Yang Omega
         }
         
         # 统计
@@ -879,6 +893,21 @@ class FeatureInjector:
                  new_features['Ceramic_MagpieData mean AtomicWeight'].append(np.nan)
                  new_features['Ceramic_MagpieData std Electronegativity'].append(np.nan)
                  new_features['Ceramic_MagpieData minimum Number'].append(np.nan)
+
+            # 6. Matminer HEA Features (YangSolidSolution)
+            if self.yang_featurizer:
+                try:
+                    pmg_comp = Composition(composition)
+                    yang_feats = self.yang_featurizer.featurize(pmg_comp)
+                    # Ordered: ['Yang omega', 'Yang delta']
+                    new_features['yang_omega'].append(yang_feats[0])
+                    new_features['yang_delta'].append(yang_feats[1])
+                except Exception as e:
+                    new_features['yang_omega'].append(np.nan)
+                    new_features['yang_delta'].append(np.nan)
+            else:
+                 new_features['yang_omega'].append(np.nan)
+                 new_features['yang_delta'].append(np.nan)
 
             success_count += 1
         

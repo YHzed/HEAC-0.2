@@ -857,7 +857,7 @@ with tab1:
                                  if use_full_matminer:
                                      # Extract JSON
                                      c_feat = {k: row[k] for k in row.keys() if str(k).startswith('Ceramic_MagpieData')}
-                                     b_feat = {k: row[k] for k in row.keys() if str(k).startswith('Binder_MagpieData')}
+                                     b_feat = {k: row[k] for k in row.keys() if str(k).startswith('Binder_MagpieData') or str(k).startswith('yang_')}
                                      
                                      feature.ceramic_magpie_features = c_feat
                                      feature.binder_magpie_features = b_feat
