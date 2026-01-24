@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "D:\ML\HEAC 0.2\.shared\ui-ux-pro-max\scripts\search.py", line 76, in <module>
+    print(result)
+UnicodeEncodeError: 'gbk' codec can't encode character '\u26a1' in position 754: illegal multibyte sequence

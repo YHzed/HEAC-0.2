@@ -1,74 +1,179 @@
 {
     "WC": {
         "enthalpy": -40.0,
-        "density": 15.63
+        "density": 15.63,
+        "structure": "hexagonal",
+        "space_group": "P-6m2",
+        "lattice_a": 2.906,
+        "lattice_c": 2.837,
+        "neighbor_distance": 2.906,
+        "source": "ASM Handbook",
+        "material_id": "mp-1894"
     },
     "TiC": {
         "enthalpy": -184.0,
-        "density": 4.93
+        "density": 4.93,
+        "structure": "fcc",
+        "space_group": "Fm-3m",
+        "lattice_a": 4.328,
+        "neighbor_distance": 3.061,
+        "source": "Materials Project",
+        "material_id": "mp-631"
     },
     "TaC": {
         "enthalpy": -143.0,
-        "density": 14.3
+        "density": 14.3,
+        "structure": "fcc",
+        "space_group": "Fm-3m",
+        "lattice_a": 4.456,
+        "neighbor_distance": 3.151,
+        "source": "verified"
     },
     "NbC": {
         "enthalpy": -138.0,
-        "density": 7.6
+        "density": 7.6,
+        "structure": "fcc",
+        "space_group": "Fm-3m",
+        "lattice_a": 4.470,
+        "neighbor_distance": 3.161,
+        "source": "verified"
     },
     "VC": {
         "enthalpy": -101.0,
-        "density": 5.77
+        "density": 5.77,
+        "structure": "fcc",
+        "space_group": "Fm-3m",
+        "lattice_a": 4.166,
+        "neighbor_distance": 2.946,
+        "source": "verified"
     },
     "HfC": {
         "enthalpy": -209.0,
-        "density": 12.2
+        "density": 12.2,
+        "structure": "fcc",
+        "space_group": "Fm-3m",
+        "lattice_a": 4.640,
+        "neighbor_distance": 3.281,
+        "source": "verified"
     },
     "ZrC": {
         "enthalpy": -197.0,
-        "density": 6.73
+        "density": 6.73,
+        "structure": "fcc",
+        "space_group": "Fm-3m",
+        "lattice_a": 4.698,
+        "neighbor_distance": 3.322,
+        "source": "verified"
     },
     "Cr3C2": {
         "enthalpy": -89.0,
-        "density": 6.68
+        "density": 6.68,
+        "structure": "orthorhombic",
+        "space_group": "Pnma",
+        "lattice_a": 5.53,
+        "lattice_b": 2.83,
+        "lattice_c": 11.48,
+        "neighbor_distance": 2.7,
+        "source": "verified"
     },
     "Mo2C": {
         "enthalpy": -53.0,
-        "density": 9.18
+        "density": 9.18,
+        "structure": "hexagonal",
+        "space_group": "P63/mmc",
+        "lattice_a": 3.002,
+        "lattice_c": 4.724,
+        "neighbor_distance": 3.002,
+        "source": "verified"
     },
     "AlN": {
         "enthalpy": -318.0,
-        "density": 3.26
+        "density": 3.26,
+        "structure": "hexagonal",
+        "space_group": "P63mc",
+        "lattice_a": 3.111,
+        "lattice_c": 4.981,
+        "neighbor_distance": 3.111,
+        "source": "verified"
     },
     "TiN": {
         "enthalpy": -338.0,
-        "density": 5.22
+        "density": 5.22,
+        "structure": "fcc",
+        "space_group": "Fm-3m",
+        "lattice_a": 4.242,
+        "neighbor_distance": 3.000,
+        "source": "Materials Project",
+        "material_id": "mp-492"
     },
     "SiC": {
         "enthalpy": -65.0,
-        "density": 3.21
+        "density": 3.21,
+        "structure": "hexagonal",
+        "space_group": "P63mc",
+        "lattice_a": 3.086,
+        "lattice_c": 10.053,
+        "neighbor_distance": 3.086,
+        "source": "verified"
     },
     "Al2O3": {
         "enthalpy": -1675.7,
-        "density": 3.95
+        "density": 3.95,
+        "structure": "hexagonal",
+        "space_group": "R-3c",
+        "lattice_a": 4.759,
+        "lattice_c": 12.991,
+        "neighbor_distance": 4.759,
+        "source": "verified"
     },
     "TiO2": {
         "enthalpy": -944.0,
-        "density": 4.23
+        "density": 4.23,
+        "structure": "tetragonal",
+        "space_group": "P42/mnm",
+        "lattice_a": 4.593,
+        "lattice_c": 2.959,
+        "neighbor_distance": 4.593,
+        "source": "verified"
     },
     "Si3N4": {
         "enthalpy": -744.8,
-        "density": 3.17
+        "density": 3.17,
+        "structure": "hexagonal",
+        "space_group": "P63/m",
+        "lattice_a": 7.753,
+        "lattice_c": 5.618,
+        "neighbor_distance": 7.753,
+        "source": "verified"
     },
     "ZrO2": {
         "enthalpy": -1080.0,
-        "density": 5.68
+        "density": 5.68,
+        "structure": "monoclinic",
+        "space_group": "P21/c",
+        "lattice_a": 5.145,
+        "lattice_b": 5.212,
+        "lattice_c": 5.317,
+        "neighbor_distance": 5.145,
+        "source": "verified"
     },
     "MgO": {
         "enthalpy": -601.6,
-        "density": 3.58
+        "density": 3.58,
+        "structure": "fcc",
+        "space_group": "Fm-3m",
+        "lattice_a": 4.212,
+        "neighbor_distance": 2.978,
+        "source": "verified"
     },
     "BN": {
         "enthalpy": -250.9,
-        "density": 2.1
+        "density": 2.1,
+        "structure": "hexagonal",
+        "space_group": "P63/mmc",
+        "lattice_a": 2.504,
+        "lattice_c": 6.661,
+        "neighbor_distance": 2.504,
+        "source": "verified"
     }
 }

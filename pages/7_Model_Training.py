@@ -9,11 +9,21 @@ from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 import xgboost as xgb
 from sklearn.ensemble import RandomForestRegressor
 import warnings
+
 warnings.filterwarnings('ignore')
+
+# ========== 性能优化: 数据加载缓存 ==========
+@st.cache_data
+def load_training_data(file_path: str) -> pd.DataFrame:
+    """缓存训练数据加载 - 避免重复读取CSV"""
+    return pd.read_csv(file_path)
 
 st.set_page_config(page_title="Model Training", page_icon="🎓", layout="wide")
 
-st.title("🎓 HEA Model Training & Analysis")
+import ui.style_manager as style_manager
+style_manager.apply_theme()
+
+style_manager.ui_header("🎓 HEA Model Training & Analysis")
 st.markdown("""
 **核心流程**：
 1. 数据加载与分割
@@ -37,7 +47,8 @@ file_path = st.text_input(
 if st.button("Load Data") or 'df_model' in st.session_state:
     try:
         if 'df_model' not in st.session_state:
-            df = pd.read_csv(file_path)
+            # 使用缓存加载数据
+            df = load_training_data(file_path)
             st.session_state.df_model = df
         else:
             df = st.session_state.df_model
@@ -381,32 +392,92 @@ if 'best_params' in st.session_state:
                 'MAE': '{:.2f}'
             }))
             
-            # 可视化
-            fig, axes = plt.subplots(1, 2, figsize=(15, 5))
+            # ========== 使用Plotly替换Matplotlib (性能优化) ==========
+            import plotly.graph_objects as go
+            from plotly.subplots import make_subplots
             
-            # 预测vs实际
-            ax = axes[0]
-            ax.scatter(y_test, y_pred_test, alpha=0.6, s=50)
+            # 创建子图
+            fig = make_subplots(
+                rows=1, cols=2,
+                subplot_titles=('Prediction vs Actual', 'Residual Plot'),
+                horizontal_spacing=0.12
+            )
+            
+            # 1. 预测vs实际
             min_val = min(y_test.min(), y_pred_test.min())
             max_val = max(y_test.max(), y_pred_test.max())
-            ax.plot([min_val, max_val], [min_val, max_val], 'r--', lw=2)
-            ax.set_xlabel('Actual')
-            ax.set_ylabel('Predicted')
-            ax.set_title(f'Prediction vs Actual (Test R²={metrics_df.loc[1, "R²"]:.4f})')
-            ax.grid(True, alpha=0.3)
             
-            # 残差图
-            ax = axes[1]
+            fig.add_trace(
+                go.Scatter(
+                    x=y_test,
+                    y=y_pred_test,
+                    mode='markers',
+                    marker=dict(size=8, color='steelblue', opacity=0.6,
+                               line=dict(width=0.5, color='white')),
+                    name='Test Data',
+                    hovertemplate='Actual: %{x:.2f}<br>Predicted: %{y:.2f}<extra></extra>'
+                ),
+                row=1, col=1
+            )
+            
+            # 添加理想线
+            fig.add_trace(
+                go.Scatter(
+                    x=[min_val, max_val],
+                    y=[min_val, max_val],
+                    mode='lines',
+                    line=dict(color='red', dash='dash', width=2),
+                    name='Perfect Prediction',
+                    showlegend=True
+                ),
+                row=1, col=1
+            )
+            
+            # 2. 残差图
             residuals = y_test - y_pred_test
-            ax.scatter(y_pred_test, residuals, alpha=0.6, s=50)
-            ax.axhline(y=0, color='r', linestyle='--', lw=2)
-            ax.set_xlabel('Predicted')
-            ax.set_ylabel('Residuals')
-            ax.set_title('Residual Plot')
-            ax.grid(True, alpha=0.3)
             
-            plt.tight_layout()
-            st.pyplot(fig)
+            fig.add_trace(
+                go.Scatter(
+                    x=y_pred_test,
+                    y=residuals,
+                    mode='markers',
+                    marker=dict(size=8, color='steelblue', opacity=0.6,
+                               line=dict(width=0.5, color='white')),
+                    name='Residuals',
+                    showlegend=False,
+                    hovertemplate='Predicted: %{x:.2f}<br>Residual: %{y:.2f}<extra></extra>'
+                ),
+                row=1, col=2
+            )
+            
+            # 添加零线
+            fig.add_trace(
+                go.Scatter(
+                    x=[y_pred_test.min(), y_pred_test.max()],
+                    y=[0, 0],
+                    mode='lines',
+                    line=dict(color='red', dash='dash', width=2),
+                    name='Zero Line',
+                    showlegend=False
+                ),
+                row=1, col=2
+            )
+            
+            # 更新布局
+            fig.update_xaxes(title_text="Actual", row=1, col=1)
+            fig.update_yaxes(title_text="Predicted", row=1, col=1)
+            fig.update_xaxes(title_text="Predicted", row=1, col=2)
+            fig.update_yaxes(title_text="Residuals", row=1, col=2)
+            
+            fig.update_layout(
+                height=500,
+                showlegend=True,
+                template='plotly_white',
+                hovermode='closest',
+                title_text=f'Test Set Performance (R²={metrics_df.loc[1, "R²"]:.4f})'
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
 
 # ===================
 # Step 5: SHAP物理可解释性分析（关键步骤）

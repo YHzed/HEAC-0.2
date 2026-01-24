@@ -162,6 +162,66 @@ class MaterialDatabase:
             return self.get_density_from_mp(formula)
             
         return None
+    
+    def get_ceramic_properties(self, formula: str, use_mp: bool = False) -> Optional[Dict[str, Any]]:
+        """
+        获取陶瓷材料的完整属性（密度、晶格参数、结构等）
+        
+        Args:
+            formula: 化学式（如 'WC', 'TiC', 'TiN'）
+            use_mp: 是否使用Materials Project API（在线查询）
+        
+        Returns:
+            {
+                'density': float,  # g/cm³
+                'structure': str,  # 'hexagonal', 'fcc', etc.
+                'lattice_a': float,  # Å
+                'lattice_c': float,  # Å (if applicable)
+                'neighbor_distance': float,  # Å
+                'space_group': str,
+                'source': str  # 'local' or 'Materials Project'
+            }
+            如果未找到返回None
+        """
+        # 1. 尝试从compounds.json获取本地数据
+        local_data = self._compounds_data.get(formula)
+        if local_data and isinstance(local_data, dict):
+            # 检查是否包含结构信息
+            if 'structure' in local_data or 'lattice_a' in local_data:
+                result = local_data.copy()
+                if 'source' not in result:
+                    result['source'] = 'local'
+                return result
+        
+        # 2. 如果允许，从Materials Project获取
+        if use_mp:
+            mp_data = self.get_mp_data(formula)
+            if mp_data:
+                # 从MP数据提取陶瓷属性
+                result = {
+                    'density': mp_data.get('density'),
+                    'source': 'Materials Project',
+                    'material_id': mp_data.get('material_id')
+                }
+                # 尝试从structure对象提取晶格参数
+                structure = mp_data.get('structure')
+                if structure:
+                    try:
+                        lattice = structure.lattice
+                        result['lattice_a'] = lattice.a
+                        result['lattice_b'] = lattice.b
+                        result['lattice_c'] = lattice.c
+                        result['space_group'] = structure.get_space_group_info()[0]
+                        # 计算最近邻距离（简化版）
+                        if hasattr(lattice, 'a'):
+                            result['neighbor_distance'] = lattice.a / (2 ** 0.5)  # FCC近似
+                    except Exception as e:
+                        print(f"Warning: Could not extract lattice params from MP structure: {e}")
+                
+                return result
+        
+        # 3. 没有找到数据
+        return None
 
     def get_all_elements(self) -> Dict[str, Dict[str, Any]]:
         """Returns the entire database."""

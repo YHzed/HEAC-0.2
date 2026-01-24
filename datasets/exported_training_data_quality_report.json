@@ -1,0 +1,634 @@
+{
+  "timestamp": "2026-01-15T16:42:56.366863",
+  "total_records": 2252,
+  "total_features": 298,
+  "missing_statistics": {
+    "sinter_temp_c": {
+      "missing_count": 923,
+      "missing_percent": 40.98579040852576
+    },
+    "grain_size_um": {
+      "missing_count": 1069,
+      "missing_percent": 47.46891651865009
+    },
+    "sinter_method": {
+      "missing_count": 2252,
+      "missing_percent": 100.0
+    },
+    "load_kgf": {
+      "missing_count": 2252,
+      "missing_percent": 100.0
+    },
+    "ceramic_formula": {
+      "missing_count": 1,
+      "missing_percent": 0.04440497335701599
+    },
+    "ceramic_vol_pct": {
+      "missing_count": 2252,
+      "missing_percent": 100.0
+    },
+    "hv": {
+      "missing_count": 3,
+      "missing_percent": 0.13321492007104796
+    },
+    "kic": {
+      "missing_count": 51,
+      "missing_percent": 2.2646536412078153
+    },
+    "trs": {
+      "missing_count": 1624,
+      "missing_percent": 72.11367673179396
+    },
+    "youngs_modulus": {
+      "missing_count": 2252,
+      "missing_percent": 100.0
+    },
+    "hardness_grade": {
+      "missing_count": 2252,
+      "missing_percent": 100.0
+    },
+    "toughness_grade": {
+      "missing_count": 2252,
+      "missing_percent": 100.0
+    },
+    "pred_bulk_modulus": {
+      "missing_count": 2252,
+      "missing_percent": 100.0
+    },
+    "pred_shear_modulus": {
+      "missing_count": 2252,
+      "missing_percent": 100.0
+    },
+    "lattice_mismatch": {
+      "missing_count": 2252,
+      "missing_percent": 100.0
+    },
+    "mean_atomic_radius": {
+      "missing_count": 2252,
+      "missing_percent": 100.0
+    },
+    "binder_density": {
+      "missing_count": 2252,
+      "missing_percent": 100.0
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData minimum Number": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData maximum Number": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData range Number": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mean Number": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev Number": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mode Number": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData minimum MendeleevNumber": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData maximum MendeleevNumber": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData range MendeleevNumber": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mean MendeleevNumber": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev MendeleevNumber": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mode MendeleevNumber": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData minimum AtomicWeight": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData maximum AtomicWeight": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData range AtomicWeight": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mean AtomicWeight": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev AtomicWeight": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mode AtomicWeight": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData minimum MeltingT": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData maximum MeltingT": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData range MeltingT": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mean MeltingT": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev MeltingT": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mode MeltingT": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData minimum Column": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData maximum Column": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData range Column": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mean Column": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev Column": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mode Column": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData minimum Row": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData maximum Row": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData range Row": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mean Row": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev Row": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mode Row": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData minimum CovalentRadius": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData maximum CovalentRadius": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData range CovalentRadius": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mean CovalentRadius": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev CovalentRadius": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mode CovalentRadius": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData minimum Electronegativity": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData maximum Electronegativity": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData range Electronegativity": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mean Electronegativity": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev Electronegativity": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mode Electronegativity": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData minimum NsValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData maximum NsValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData range NsValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mean NsValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev NsValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mode NsValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData minimum NpValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData maximum NpValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData range NpValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mean NpValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev NpValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mode NpValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData minimum NdValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData maximum NdValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData range NdValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mean NdValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev NdValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mode NdValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData minimum NfValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData maximum NfValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData range NfValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mean NfValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev NfValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mode NfValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData minimum NValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData maximum NValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData range NValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mean NValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev NValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mode NValence": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData minimum NsUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData maximum NsUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData range NsUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mean NsUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev NsUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mode NsUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData minimum NpUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData maximum NpUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData range NpUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mean NpUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev NpUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mode NpUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData minimum NdUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData maximum NdUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData range NdUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mean NdUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev NdUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mode NdUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData minimum NfUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData maximum NfUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData range NfUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mean NfUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev NfUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mode NfUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData minimum NUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData maximum NUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData range NUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mean NUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev NUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mode NUnfilled": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData minimum GSvolume_pa": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData maximum GSvolume_pa": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData range GSvolume_pa": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mean GSvolume_pa": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev GSvolume_pa": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mode GSvolume_pa": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData minimum GSbandgap": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData maximum GSbandgap": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData range GSbandgap": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mean GSbandgap": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev GSbandgap": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mode GSbandgap": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData minimum GSmagmom": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData maximum GSmagmom": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData range GSmagmom": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mean GSmagmom": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev GSmagmom": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mode GSmagmom": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData minimum SpaceGroupNumber": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData maximum SpaceGroupNumber": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData range SpaceGroupNumber": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mean SpaceGroupNumber": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev SpaceGroupNumber": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    },
+    "ceramic_magpie_Ceramic_MagpieData MagpieData mode SpaceGroupNumber": {
+      "missing_count": 6,
+      "missing_percent": 0.2664298401420959
+    }
+  },
+  "target_statistics": {
+    "hv": {
+      "count": 2249,
+      "mean": 1507.1840818141395,
+      "std": 349.99612465452964,
+      "min": 14.0,
+      "max": 2923.0,
+      "missing_count": 3
+    },
+    "kic": {
+      "count": 2201,
+      "mean": 11.76074511585643,
+      "std": 4.486229859652858,
+      "min": 3.5,
+      "max": 39.9,
+      "missing_count": 51
+    },
+    "trs": {
+      "count": 628,
+      "mean": 2601.4909235668792,
+      "std": 888.7938667323776,
+      "min": 296.8,
+      "max": 5232.0,
+      "missing_count": 1624
+    }
+  },
+  "feature_coverage": {
+    "has_proxy_features": 2252,
+    "has_matminer": 2252,
+    "has_full_matminer": 2252
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-01-15T16:51:42.030512",
+  "data_path": "datasets/exported_training_data.csv",
+  "physics_calculations": [
+    {
+      "feature": "pred_formation_energy",
+      "issue": "high_positive_ratio"
+    }
+  ],
+  "hea_classification": [
+    {
+      "issue": "low_element_marked_as_hea",
+      "count": 1180,
+      "severity": "error"
+    },
+    {
+      "issue": "binary_alloy_as_hea",
+      "count": 442,
+      "severity": "critical"
+    }
+  ],
+  "feature_correlation": [],
+  "prediction_validation": {}
+}

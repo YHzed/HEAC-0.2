@@ -1,0 +1,188 @@
+{
+  "timestamp": "2026-01-15T17:18:03.232744",
+  "data_path": "datasets\\exported_training_data_fixed.csv",
+  "sample_count": 2249,
+  "feature_count": 30,
+  "target": "hv",
+  "target_stats": {
+    "mean": 1507.1840818141395,
+    "std": 349.99612465452964,
+    "min": 14.0,
+    "max": 2923.0
+  },
+  "cv_metrics": {
+    "r2": 0.8209006867191265,
+    "mae": 104.77471319989874,
+    "rmse": 148.08587018053473
+  },
+  "train_metrics": {
+    "r2": 0.9273016244844643,
+    "mae": 58.82577995514011,
+    "rmse": 94.34719971964546
+  },
+  "overfitting_ratio": 1.1296148724038566,
+  "feature_importance": [
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData mode NUnfilled",
+      "importance": 0.16355293989181519
+    },
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData maximum AtomicWeight",
+      "importance": 0.16073843836784363
+    },
+    {
+      "feature": "ceramic_magpie_Ceramic_MagpieData MagpieData mean Column",
+      "importance": 0.07420466840267181
+    },
+    {
+      "feature": "ceramic_magpie_Ceramic_MagpieData MagpieData mean Electronegativity",
+      "importance": 0.06952060014009476
+    },
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData mode AtomicWeight",
+      "importance": 0.056903548538684845
+    },
+    {
+      "feature": "ceramic_magpie_Ceramic_MagpieData MagpieData range CovalentRadius",
+      "importance": 0.0523664653301239
+    },
+    {
+      "feature": "ceramic_magpie_Ceramic_MagpieData MagpieData mean NpUnfilled",
+      "importance": 0.04367614910006523
+    },
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData range NdValence",
+      "importance": 0.04125140607357025
+    },
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData mean Column",
+      "importance": 0.040277667343616486
+    },
+    {
+      "feature": "grain_size_um",
+      "importance": 0.03613463416695595
+    },
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData mean NsUnfilled",
+      "importance": 0.032136060297489166
+    },
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData maximum NdValence",
+      "importance": 0.03202671930193901
+    },
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData minimum Row",
+      "importance": 0.026729201897978783
+    },
+    {
+      "feature": "binder_vol_pct",
+      "importance": 0.02536437101662159
+    },
+    {
+      "feature": "ceramic_magpie_Ceramic_MagpieData MagpieData mean NsValence",
+      "importance": 0.024406233802437782
+    },
+    {
+      "feature": "ceramic_magpie_Ceramic_MagpieData MagpieData mean GSbandgap",
+      "importance": 0.022304005920886993
+    },
+    {
+      "feature": "sinter_temp_c",
+      "importance": 0.01953415758907795
+    },
+    {
+      "feature": "pred_formation_energy",
+      "importance": 0.01746647246181965
+    },
+    {
+      "feature": "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev SpaceGroupNumber",
+      "importance": 0.01701219007372856
+    },
+    {
+      "feature": "pred_lattice_param",
+      "importance": 0.014592279680073261
+    },
+    {
+      "feature": "pred_magnetic_moment",
+      "importance": 0.012836609967052937
+    },
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData avg_dev GSbandgap",
+      "importance": 0.006799148395657539
+    },
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData minimum NfValence",
+      "importance": 0.004865426104515791
+    },
+    {
+      "feature": "ceramic_magpie_Ceramic_MagpieData MagpieData range NpUnfilled",
+      "importance": 0.0021495637483894825
+    },
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData maximum NsValence",
+      "importance": 0.001773612224496901
+    },
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData mode NsValence",
+      "importance": 0.0013774571707472205
+    },
+    {
+      "feature": "lattice_mismatch",
+      "importance": 0.0
+    },
+    {
+      "feature": "pred_shear_modulus",
+      "importance": 0.0
+    },
+    {
+      "feature": "pred_bulk_modulus",
+      "importance": 0.0
+    },
+    {
+      "feature": "ceramic_vol_pct",
+      "importance": 0.0
+    }
+  ],
+  "model_params": {
+    "objective": "reg:squarederror",
+    "base_score": null,
+    "booster": null,
+    "callbacks": null,
+    "colsample_bylevel": null,
+    "colsample_bynode": null,
+    "colsample_bytree": 0.8,
+    "device": null,
+    "early_stopping_rounds": null,
+    "enable_categorical": false,
+    "eval_metric": null,
+    "feature_types": null,
+    "feature_weights": null,
+    "gamma": null,
+    "grow_policy": null,
+    "importance_type": null,
+    "interaction_constraints": null,
+    "learning_rate": 0.05,
+    "max_bin": null,
+    "max_cat_threshold": null,
+    "max_cat_to_onehot": null,
+    "max_delta_step": null,
+    "max_depth": 6,
+    "max_leaves": null,
+    "min_child_weight": null,
+    "missing": NaN,
+    "monotone_constraints": null,
+    "multi_strategy": null,
+    "n_estimators": 1000,
+    "n_jobs": -1,
+    "num_parallel_tree": null,
+    "random_state": 42,
+    "reg_alpha": null,
+    "reg_lambda": null,
+    "sampling_method": null,
+    "scale_pos_weight": null,
+    "subsample": 0.8,
+    "tree_method": null,
+    "validate_parameters": null,
+    "verbosity": null
+  }
+}

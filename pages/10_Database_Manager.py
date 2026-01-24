@@ -14,6 +14,28 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.db_manager import DatabaseManager
 # from core import FeatureEngine # Not strictly needed if manager handles it, but kept if code uses it directly
 from core.composition_parser_enhanced import EnhancedCompositionParser
+from core.db_pagination import query_experiments_paginated, create_pagination_controls
+
+# ========== 性能优化: 缓存装饰器 ==========
+@st.cache_resource
+def get_db_manager():
+    """单例数据库管理器 - 避免重复创建连接"""
+    return DatabaseManager('cermet_master_v2.db')
+
+import ui.style_manager as style_manager
+
+@st.cache_data(ttl=30)  # 缓存30秒
+def load_database_stats(_db_manager):
+    """缓存数据库统计信息"""
+    return _db_manager.get_statistics()
+
+@st.cache_resource
+def get_feature_injector(model_dir: str = 'models/proxy_models'):
+    """缓存FeatureInjector单例 - 减少模型加载开销"""
+    from core.feature_injector import FeatureInjector
+    from core.parallel_feature_injector import ParallelFeatureInjector
+    injector = FeatureInjector(model_dir=model_dir)
+    return ParallelFeatureInjector(injector)
 
 # Localization Dictionary
 TRANSLATIONS = {
@@ -276,8 +298,11 @@ if 'use_v2_db' not in st.session_state:
 if 'language' not in st.session_state:
     st.session_state['language'] = 'EN'
 
+# Apply Theme
+style_manager.apply_theme()
+
 # Title
-st.title(t('main_title'))
+style_manager.ui_header(t('main_title'), t('page_title'))
 st.markdown("---")
 
 # Sidebar - Database Settings
@@ -302,7 +327,10 @@ with st.sidebar:
     # Delete All Data Button
     if st.button(t('delete_stats_btn'), type="primary", use_container_width=True):
         try:
-            db = DatabaseManager('cermet_master_v2.db')
+            # 清空缓存
+            st.cache_data.clear()
+            st.cache_resource.clear()
+            db = get_db_manager()
             # WARNING: This deletes everything
             db.drop_tables()
             db.create_tables()
@@ -319,8 +347,9 @@ with st.sidebar:
     st.header(t('db_stats_header'))
     
     try:
-        db = DatabaseManager('cermet_master_v2.db')
-        stats = db.get_statistics()
+        # 使用缓存的数据库管理器和统计信息
+        db = get_db_manager()
+        stats = load_database_stats(db)
         
         col1, col2 = st.columns(2)
         with col1:
@@ -410,7 +439,8 @@ with tab1:
                 st.error("Please enter a composition string.")
             else:
                 try:
-                    db = DatabaseManager('cermet_master_v2.db')
+                    # 使用缓存的数据库管理器
+                    db = get_db_manager()
                     db.create_tables()  # Ensure tables exist
                     
                     with st.spinner("Saving data..."):
@@ -508,7 +538,7 @@ with tab1:
                             try: return float(value)
                             except: return None
                         
-                        db = DatabaseManager('cermet_master_v2.db')
+                        db = get_db_manager()
                         db.create_tables()
                         
                         progress_bar = st.progress(0)
@@ -587,8 +617,9 @@ with tab1:
         st.markdown(t('calc_caption'))
         
         try:
-            db = DatabaseManager('cermet_master_v2.db')
-            stats = db.get_statistics()
+            # 使用缓存的数据库管理器
+            db = get_db_manager()
+            stats = load_database_stats(db)
             
             # ... [Logic to check missing] ...
             # Original code accessed db_v2.Session(), we need to use db.Session()
@@ -716,15 +747,29 @@ with tab1:
                      
                      try:
                         from core.feature_injector import FeatureInjector
+                        from core.parallel_feature_injector import ParallelFeatureInjector
+                        import time
                         
                         df_enhanced = df_to_inject
                         if use_proxy:
                              with progress_container: st.info(t('loading_proxy'))
                              try:
-                                 injector = FeatureInjector(model_dir='models/proxy_models')
-                                 with progress_container: st.info(t('calc_proxy').format(len(df_to_inject)))
-                                 df_enhanced = injector.inject_features(df_to_inject, comp_col='binder_composition', ceramic_type_col='Ceramic_Type', verbose=False)
-                                 progress_container.success(t('proxy_done'))
+                                 # 使用缓存的FeatureInjector
+                                 parallel_injector = get_feature_injector()
+                                 
+                                 start_time = time.time()
+                                 with progress_container: st.info(t('calc_proxy').format(len(df_to_inject)) + " (缓存加速)")
+                                 
+                                 df_enhanced = parallel_injector.inject_features_cached(
+                                     df_to_inject, 
+                                     comp_col='binder_composition', 
+                                     ceramic_type_col='Ceramic_Type', 
+                                     verbose=False
+                                 )
+                                 
+                                 elapsed = time.time() - start_time
+                                 cache_size = len(parallel_injector._feature_cache)
+                                 progress_container.success(f"{t('proxy_done')} ({elapsed:.1f}秒, 缓存{cache_size}个成分)")
                              except Exception as e:
                                  error_container.warning(f"⚠️ Proxy calculation failed: {e}")
                         
@@ -830,6 +875,12 @@ with tab1:
                                  if not feature:
                                      feature = CalculatedFeature(exp_id=exp_id)
                                      session.add(feature)
+                                 
+                                 # Update HEA Flag (Recalculated)
+                                 if 'is_hea' in row:
+                                     comp_rec = session.query(Composition).filter_by(exp_id=exp_id).first()
+                                     if comp_rec:
+                                         comp_rec.is_hea = bool(row['is_hea'])
                                  
                                  # Update Proxy Features
                                  if 'pred_formation_energy' in row: feature.pred_formation_energy = row['pred_formation_energy']

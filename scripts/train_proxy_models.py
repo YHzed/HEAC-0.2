@@ -40,8 +40,8 @@ def main():
                        help='Materials Project API密钥（可选）')
     parser.add_argument('--models', type=str, nargs='+',
                        choices=['all', 'formation', 'lattice', 'magnetic', 'elastic', 'brittleness'],
-                       default=['all'],
-                       help='要训练的模型')
+                       default=['formation', 'lattice', 'magnetic'],  # 仅默认训练有效模型
+                       help='要训练的模型（默认：仅训练有真实数据的3个核心模型）')
     
     args = parser.parse_args()
     
@@ -82,12 +82,14 @@ def main():
     
     if train_all or 'elastic' in args.models:
         print("\n" + "🔬" * 40)
-        print("⚠️  注意：弹性模量模型当前使用模拟数据")
+        print("⚠️  警告: 弹性模量模型使用模拟数据，性能极差（R² ≈ -0.5）")
+        print("   建议：跳过此模型或从Materials Project获取真实数据")
         trainer.train_elastic_modulus_model(cv=args.cv)
     
     if train_all or 'brittleness' in args.models:
         print("\n" + "🔬" * 40)
-        print("⚠️  注意：脆性指数模型当前使用模拟数据")
+        print("⚠️  警告: 脆性指数模型使用模拟数据，性能极差（R² ≈ -0.6）")
+        print("   建议：跳过此模型或提供真实Pugh比数据")
         trainer.train_brittleness_model(cv=args.cv)
     
     # 显示总结

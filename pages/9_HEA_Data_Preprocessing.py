@@ -24,33 +24,15 @@ st.set_page_config(
     layout="wide"
 )
 
-st.markdown("""
-<style>
-    .stApp { background-color: #f0f2f6; }
-    h1 { color: #4B4B4B; }
-    .success-box {
-        padding: 1rem;
-        border-radius: 0.5rem;
-        background-color: #d4edda;
-        border: 1px solid #c3e6cb;
-        color: #155724;
-        margin: 1rem 0;
-    }
-    .info-box {
-        padding: 1rem;
-        border-radius: 0.5rem;
-        background-color: #d1ecf1;
-        border: 1px solid #bee5eb;
-        color: #0c5460;
-        margin: 1rem 0;
-    }
-</style>
-""", unsafe_allow_html=True)
+
+import ui.style_manager as style_manager
+style_manager.apply_theme()
 
 # ==============================================================================
 # MAIN PAGE
 # ==============================================================================
-st.markdown("<h1>🔧 HEA数据预处理</h1>", unsafe_allow_html=True)
+# Main Page
+style_manager.ui_header("🔧 HEA数据预处理")
 st.markdown("""
 高熵合金（HEA）和金属陶瓷数据自动处理工具。支持复杂成分字符串解析、特征提取和数据清洗。
 """)

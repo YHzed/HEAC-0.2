@@ -1,0 +1,206 @@
+{
+  "XGBoost_HV_kgf_mm2.pkl": {
+    "model_path": "models\\XGBoost_HV_kgf_mm2.pkl",
+    "model_type": "dict",
+    "timestamp": "2026-01-15T16:47:08.095257"
+  },
+  "master_models/master_hv_model.pkl": {
+    "model_path": "models\\master_models\\master_hv_model.pkl",
+    "model_type": "XGBRegressor",
+    "timestamp": "2026-01-15T16:47:08.256233",
+    "model_params": {
+      "objective": "reg:squarederror",
+      "base_score": "None",
+      "booster": "None",
+      "callbacks": "None",
+      "colsample_bylevel": "None",
+      "colsample_bynode": "None",
+      "colsample_bytree": "0.8",
+      "device": "None",
+      "early_stopping_rounds": "None",
+      "enable_categorical": "False",
+      "eval_metric": "None",
+      "feature_types": "None",
+      "feature_weights": "None",
+      "gamma": "None",
+      "grow_policy": "None",
+      "importance_type": "None",
+      "interaction_constraints": "None",
+      "learning_rate": "0.05",
+      "max_bin": "None",
+      "max_cat_threshold": "None",
+      "max_cat_to_onehot": "None",
+      "max_delta_step": "None",
+      "max_depth": "6",
+      "max_leaves": "None",
+      "min_child_weight": "None",
+      "missing": "nan",
+      "monotone_constraints": "None",
+      "multi_strategy": "None",
+      "n_estimators": "1000",
+      "n_jobs": "-1",
+      "num_parallel_tree": "None",
+      "random_state": "42",
+      "reg_alpha": "None",
+      "reg_lambda": "None",
+      "sampling_method": "None",
+      "scale_pos_weight": "None",
+      "subsample": "0.8",
+      "tree_method": "None",
+      "validate_parameters": "None",
+      "verbosity": "None"
+    },
+    "feature_count": 9,
+    "top_features": [
+      {
+        "feature": "Grain_Size_um",
+        "importance": 0.21337173879146576
+      },
+      {
+        "feature": "Binder_Vol_Pct",
+        "importance": 0.20193122327327728
+      },
+      {
+        "feature": "Sinter_Temp_C",
+        "importance": 0.10935049504041672
+      },
+      {
+        "feature": "lattice_mismatch_wc",
+        "importance": 0.08859338611364365
+      },
+      {
+        "feature": "lattice_distortion",
+        "importance": 0.08161856234073639
+      },
+      {
+        "feature": "pred_magnetic_moment",
+        "importance": 0.08105255663394928
+      },
+      {
+        "feature": "pred_formation_energy",
+        "importance": 0.07790116965770721
+      },
+      {
+        "feature": "coherent_potential",
+        "importance": 0.0742507129907608
+      },
+      {
+        "feature": "pred_lattice_param",
+        "importance": 0.0719301700592041
+      }
+    ],
+    "feature_names": [
+      "Binder_Vol_Pct",
+      "Grain_Size_um",
+      "Sinter_Temp_C",
+      "pred_formation_energy",
+      "pred_lattice_param",
+      "lattice_mismatch_wc",
+      "lattice_distortion",
+      "pred_magnetic_moment",
+      "coherent_potential"
+    ]
+  },
+  "XGBoost_KIC_MPa_m.pkl": {
+    "model_path": "models\\XGBoost_KIC_MPa_m.pkl",
+    "model_type": "dict",
+    "timestamp": "2026-01-15T16:47:10.140330"
+  },
+  "master_models/master_kic_model.pkl": {
+    "model_path": "models\\master_models\\master_kic_model.pkl",
+    "model_type": "XGBRegressor",
+    "timestamp": "2026-01-15T16:47:10.307040",
+    "model_params": {
+      "objective": "reg:squarederror",
+      "base_score": "None",
+      "booster": "None",
+      "callbacks": "None",
+      "colsample_bylevel": "None",
+      "colsample_bynode": "None",
+      "colsample_bytree": "0.8",
+      "device": "None",
+      "early_stopping_rounds": "None",
+      "enable_categorical": "False",
+      "eval_metric": "None",
+      "feature_types": "None",
+      "feature_weights": "None",
+      "gamma": "None",
+      "grow_policy": "None",
+      "importance_type": "None",
+      "interaction_constraints": "None",
+      "learning_rate": "0.05",
+      "max_bin": "None",
+      "max_cat_threshold": "None",
+      "max_cat_to_onehot": "None",
+      "max_delta_step": "None",
+      "max_depth": "6",
+      "max_leaves": "None",
+      "min_child_weight": "None",
+      "missing": "nan",
+      "monotone_constraints": "None",
+      "multi_strategy": "None",
+      "n_estimators": "1000",
+      "n_jobs": "-1",
+      "num_parallel_tree": "None",
+      "random_state": "42",
+      "reg_alpha": "None",
+      "reg_lambda": "None",
+      "sampling_method": "None",
+      "scale_pos_weight": "None",
+      "subsample": "0.8",
+      "tree_method": "None",
+      "validate_parameters": "None",
+      "verbosity": "None"
+    },
+    "feature_count": 9,
+    "top_features": [
+      {
+        "feature": "lattice_mismatch_wc",
+        "importance": 0.21092112362384796
+      },
+      {
+        "feature": "coherent_potential",
+        "importance": 0.20116150379180908
+      },
+      {
+        "feature": "pred_lattice_param",
+        "importance": 0.16250497102737427
+      },
+      {
+        "feature": "lattice_distortion",
+        "importance": 0.10447986423969269
+      },
+      {
+        "feature": "Grain_Size_um",
+        "importance": 0.08837621659040451
+      },
+      {
+        "feature": "Binder_Vol_Pct",
+        "importance": 0.06614837795495987
+      },
+      {
+        "feature": "pred_magnetic_moment",
+        "importance": 0.06605373322963715
+      },
+      {
+        "feature": "pred_formation_energy",
+        "importance": 0.0565437376499176
+      },
+      {
+        "feature": "Sinter_Temp_C",
+        "importance": 0.04381044954061508
+      }
+    ],
+    "feature_names": [
+      "Binder_Vol_Pct",
+      "Grain_Size_um",
+      "Sinter_Temp_C",
+      "pred_formation_energy",
+      "pred_lattice_param",
+      "lattice_mismatch_wc",
+      "lattice_distortion",
+      "pred_magnetic_moment",
+      "coherent_potential"
+    ]
+  }
+}

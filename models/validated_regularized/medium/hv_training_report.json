@@ -1,0 +1,33 @@
+{
+  "timestamp": "2026-01-15T17:24:36.207542",
+  "strategy": "medium",
+  "strategy_name": "中度正则化",
+  "data_path": "datasets/exported_training_data_fixed.csv",
+  "sample_count": 2249,
+  "feature_count": 30,
+  "target": "hv",
+  "model_params": {
+    "name": "中度正则化",
+    "n_estimators": 600,
+    "max_depth": 4,
+    "learning_rate": 0.05,
+    "min_child_weight": 3,
+    "gamma": 0.2,
+    "reg_alpha": 0.3,
+    "reg_lambda": 1.0,
+    "subsample": 0.75,
+    "colsample_bytree": 0.75,
+    "colsample_bylevel": 0.9
+  },
+  "cv_metrics": {
+    "r2": 0.8005027849321614,
+    "mae": 114.56543036596995,
+    "rmse": 156.29139950895953
+  },
+  "train_metrics": {
+    "r2": 0.8755231190631536,
+    "mae": 90.28263366142873,
+    "rmse": 123.45566129235736
+  },
+  "overfitting_ratio": 1.0937165185969338
+}

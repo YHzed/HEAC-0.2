@@ -16,16 +16,9 @@ from core import (
 # Page Config
 st.set_page_config(page_title="General ML Lab", page_icon="🤖", layout="wide")
 
-# Custom CSS
-st.markdown("""
-<style>
-    .stApp { background-color: #f0f2f6; }
-    .main-header { font-size: 2.5rem; color: #4B4B4B; text-align: center; margin-bottom: 2rem; }
-    .stButton>button { color: white; background-color: #007bff; border-radius: 5px; }
-    div[data-baseweb="input"] { background-color: #ffffff !important; border: 1px solid #ced4da !important; border-radius: 5px !important; }
-    input[type="text"], input[type="number"] { background-color: #ffffff !important; color: #000000 !important; }
-</style>
-""", unsafe_allow_html=True)
+import ui.style_manager as style_manager
+# Apply Theme
+style_manager.apply_theme()
 
 # Initialization
 from core.session import initialize_session_state
@@ -63,7 +56,7 @@ with st.sidebar:
 
 # --- Data Upload Page ---
 if page == t('nav_data'):
-    st.markdown(f"<h1 class='main-header'>{t('header_data')}</h1>", unsafe_allow_html=True)
+    style_manager.ui_header(t('header_data'))
     uploaded_file = st.file_uploader(t('upload_label'), type=['csv', 'xlsx', 'parquet'])
     
     if uploaded_file:

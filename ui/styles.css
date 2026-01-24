@@ -1,0 +1,165 @@
+/* HEAC 0.2 Design System - Vibrant & Block-based */
+
+/* Import Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Crimson+Pro:wght@400;500;600;700&display=swap');
+
+:root {
+    /* Color Palette */
+    --color-primary: #3B82F6;
+    --color-secondary: #60A5FA;
+    --color-cta: #F97316;
+    --color-background: #F8FAFC;
+    --color-text: #1E293B;
+
+    /* Spacing */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
+    --space-2xl: 48px;
+    --space-3xl: 64px;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Global Reset & Typography */
+html,
+body,
+[class*="css"] {
+    font-family: 'Atkinson Hyperlegible', sans-serif;
+    color: var(--color-text);
+    background-color: var(--color-background);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: 'Crimson Pro', serif;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+/* Streamlit Container Override */
+.stApp {
+    background-color: var(--color-background);
+}
+
+/* -----------------------
+   Component Specs
+   ----------------------- */
+
+/* Buttons */
+.stButton>button {
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    padding: 12px 24px !important;
+    transition: all 200ms ease !important;
+    border: none !important;
+}
+
+/* Primary Button Style (Default Streamlit Primary) */
+.stButton>button[kind="primary"] {
+    background-color: var(--color-cta) !important;
+    color: white !important;
+}
+
+.stButton>button[kind="primary"]:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Secondary Button Style (Default Streamlit Secondary) */
+.stButton>button[kind="secondary"] {
+    background-color: transparent !important;
+    color: var(--color-primary) !important;
+    border: 2px solid var(--color-primary) !important;
+}
+
+.stButton>button[kind="secondary"]:hover {
+    background-color: rgba(59, 130, 246, 0.1) !important;
+    transform: translateY(-1px);
+}
+
+/* Custom CSS Classes (for html injection) */
+.btn-primary {
+    background: var(--color-cta);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 200ms ease;
+    cursor: pointer;
+    border: none;
+    display: inline-block;
+    text-decoration: none;
+}
+
+.btn-primary:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Cards */
+.card {
+    background: #FFFFFF;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: var(--shadow-md);
+    transition: all 200ms ease;
+    border: 1px solid #E2E8F0;
+    margin-bottom: 1rem;
+}
+
+.card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+    border-color: var(--color-primary);
+}
+
+/* Streamlit Expander / Containers acting as cards */
+[data-testid="stExpander"],
+[data-testid="stForm"] {
+    background: #FFFFFF;
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid #E2E8F0;
+}
+
+/* Inputs */
+.stTextInput>div>div>input,
+.stNumberInput>div>div>input,
+.stSelectbox>div>div {
+    background-color: #FFFFFF;
+    border-radius: 8px;
+    border: 1px solid #E2E8F0;
+}
+
+.stTextInput>div>div>input:focus,
+.stNumberInput>div>div>input:focus,
+.stSelectbox>div>div:focus-within {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+/* Metrics */
+[data-testid="stMetricValue"] {
+    font-family: 'Crimson Pro', serif;
+    color: var(--color-cta);
+}
+
+/* Sidebar */
+[data-testid="stSidebar"] {
+    background-color: #F1F5F9;
+    /* Slate-100 */
+    border-right: 1px solid #E2E8F0;
+}

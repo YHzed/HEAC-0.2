@@ -1,0 +1,6 @@
+{
+  "xgb_weight": 0.65,
+  "cat_weight": 0.35,
+  "xgb_model_path": "xgb_model.pkl",
+  "cat_model_path": "cat_model.pkl"
+}

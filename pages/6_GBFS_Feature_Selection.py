@@ -9,11 +9,15 @@ from sklearn.feature_selection import RFECV
 from sklearn.model_selection import cross_val_score
 import xgboost as xgb
 import warnings
+
 warnings.filterwarnings('ignore')
 
 st.set_page_config(page_title="GBFS Feature Selection", page_icon="🎯", layout="wide")
 
-st.title("🎯 GBFS Feature Selection Workflow")
+import ui.style_manager as style_manager
+style_manager.apply_theme()
+
+style_manager.ui_header("🎯 GBFS Feature Selection Workflow")
 st.markdown("""
 **三层特征筛选策略**：
 1. 分层聚类（Spearman相关性）

@@ -1,0 +1,29 @@
+{
+  "timestamp": "2026-01-15T18:50:44.286610",
+  "model_type": "Manual Ensemble (XGBoost + CatBoost)",
+  "ensemble_method": "Weighted Average",
+  "sample_count": 2249,
+  "feature_count": 30,
+  "base_models": {
+    "xgboost": {
+      "r2_cv": 0.815555460779551,
+      "mae_cv": 108.09001956870154,
+      "weight": 0.65
+    },
+    "catboost": {
+      "r2_cv": 0.812419079241818,
+      "mae_cv": 110.48488150687628,
+      "weight": 0.35
+    }
+  },
+  "ensemble_metrics": {
+    "r2_cv": 0.8170049901532697,
+    "mae_cv": 108.25459992671684,
+    "rmse_cv": 149.6877584167746
+  },
+  "train_metrics": {
+    "r2": 0.8950479645422234,
+    "mae": 80.86354662579485
+  },
+  "overfitting_ratio": 1.095523253015031
+}

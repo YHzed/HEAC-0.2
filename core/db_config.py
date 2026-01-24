@@ -190,15 +190,19 @@ def is_hea_binder(composition: Optional[str]) -> bool:
     """
     判定粘结相是否为高熵合金 (HEA)
     
-    判定规则：
-    1. 粘结相包含 >= 3 种金属元素
-    2. 常见 HEA 元素：Co, Ni, Fe, Cr, Mo, W, Ti, V, Nb, Ta, Zr, Hf, Al, Cu, Mn
+    严格HEA判定规则：
+    1. 粘结相包含 >= 5 种金属元素
+    2. 每个元素的摩尔分数在 5-35% 范围内
+    3. 常见 HEA 元素：Co, Ni, Fe, Cr, Mo, W, Ti, V, Nb, Ta, Zr, Hf, Al, Cu, Mn
+    
+    注意：此函数仅基于元素种类的简单判定，无法验证摩尔分数
+          完整验证需要在composition_parser中进行
     
     Args:
         composition: 成分字符串，如 "WC-10Co-5Ni-3Fe"
         
     Returns:
-        True 如果是 HEA 粘结相，否则 False
+        True 如果可能是 HEA 粘结相，否则 False
     """
     if not composition:
         return False
@@ -221,8 +225,9 @@ def is_hea_binder(composition: Optional[str]) -> bool:
         if element in composition or element.upper() in comp_upper:
             found_elements.add(element)
     
-    # HEA 定义：至少包含 3 种金属元素
-    return len(found_elements) >= 3
+    # 严格HEA定义：至少包含 5 种金属元素
+    # 注：摩尔分数验证需要在parser中进行，此处仅做初步判定
+    return len(found_elements) >= 5
 
 
 # ==============================================================================

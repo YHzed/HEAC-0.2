@@ -19,36 +19,6 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-# 陶瓷相密度数据 (g/cm³)
-CERAMIC_DENSITY = {
-    'WC': 15.63,
-    'TiC': 4.93,
-    'TiN': 5.22,
-    'TaC': 14.3,
-    'NbC': 7.6,
-    'VC': 5.77,
-    'Mo2C': 9.18,
-    'Cr3C2': 6.68,
-    'W2C': 17.15,
-    'ZrC': 6.73,
-    'HfC': 12.2,
-    'SiC': 3.21,
-    'Al2O3': 3.95,
-    'ZrO2': 5.68,
-    'TiO2': 4.23
-}
-
-# 陶瓷相晶格常数 (Å)
-CERAMIC_LATTICE = {
-    'WC': 2.906,   # a轴 (六方结构，取a值)
-    'TiC': 4.328,  # 立方
-    'TiN': 4.242,  # 立方
-    'TaC': 4.456,  # 立方
-    'NbC': 4.470,  # 立方
-    'VC': 4.166,   # 立方
-    'Cr3C2': 5.53  # 近似立方等效
-}
-
 # 金属元素密度 (g/cm³) - 固态
 METAL_DENSITY = {
     'Co': 8.90,
@@ -82,9 +52,9 @@ class PhysicsCalculator:
     
     def __init__(self):
         """初始化计算器"""
-        self.ceramic_density = CERAMIC_DENSITY
+        from core.material_database import db
+        self.db = db
         self.metal_density = METAL_DENSITY
-        self.ceramic_lattice = CERAMIC_LATTICE
     
     def wt_to_vol(
         self, 
@@ -115,9 +85,11 @@ class PhysicsCalculator:
                 logger.warning(f"Invalid binder density for {binder_formula}")
                 return None
             
-            # 获取陶瓷相密度
-            ceramic_density = self.ceramic_density.get(ceramic_formula, None)
-            if ceramic_density is None:
+            # 获取陶瓷相密度（使用统一API）
+            ceramic_props = self.db.get_ceramic_properties(ceramic_formula)
+            if ceramic_props and ceramic_props.get('density'):
+                ceramic_density = ceramic_props['density']
+            else:
                 logger.warning(f"Unknown ceramic density for {ceramic_formula}, using default 15.0")
                 ceramic_density = 15.0  # 默认值（接近 WC）
             
@@ -287,11 +259,13 @@ class PhysicsCalculator:
             失配度 δ = |d_nn_binder - a_ceramic| / a_ceramic
         """
         try:
-            # 获取陶瓷相晶格常数
-            ceramic_lattice = self.ceramic_lattice.get(ceramic_type, None)
-            if ceramic_lattice is None:
-                logger.warning(f"Unknown ceramic lattice for {ceramic_type}")
+            # 获取陶瓷相晶格常数（使用统一API）
+            ceramic_props = self.db.get_ceramic_properties(ceramic_type)
+            if not ceramic_props or not ceramic_props.get('neighbor_distance'):
+                logger.warning(f"Unknown ceramic properties for {ceramic_type}")
                 return None
+            
+            ceramic_lattice = ceramic_props.get('neighbor_distance')
             
             # 计算粘结相最近邻距离
             if structure_type.lower() == 'fcc':
@@ -315,6 +289,8 @@ class PhysicsCalculator:
         """
         计算价电子浓度 (Valence Electron Concentration)
         
+        统一使用HEACalculator实现（避免代码重复）
+        
         Args:
             formula: 化学式
             
@@ -322,29 +298,13 @@ class PhysicsCalculator:
             VEC 值
         """
         try:
-            # 元素价电子数字典
-            vec_dict = {
-                'Co': 9, 'Ni': 10, 'Fe': 8, 'Cr': 6, 'Mn': 7, 'Cu': 11,
-                'Al': 3, 'Ti': 4, 'V': 5, 'Mo': 6, 'W': 6,
-                'Nb': 5, 'Ta': 5, 'Zr': 4, 'Hf': 4,
-                'Re': 7, 'Ru': 8, 'Rh': 9, 'Pd': 10,
-                'Ir': 9, 'Pt': 10, 'Au': 11, 'Ag': 11
-            }
+            from core.hea_calculator import HEACalculator
             
             comp = Composition(formula)
-            el_frac_dict = comp.get_el_amt_dict()
+            el_amt_dict = comp.get_el_amt_dict()
             
-            # 归一化原子分数
-            total = sum(el_frac_dict.values())
-            el_frac_dict = {k: v / total for k, v in el_frac_dict.items()}
-            
-            # 计算 VEC
-            vec = 0.0
-            for el, frac in el_frac_dict.items():
-                el_str = str(el)
-                vec += frac * vec_dict.get(el_str, 0)
-            
-            return vec
+            # 调用统一的VEC计算方法
+            return HEACalculator.calculate_vec(el_amt_dict)
             
         except Exception as e:
             logger.error(f"Error calculating VEC: {e}")

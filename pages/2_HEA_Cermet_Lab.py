@@ -19,14 +19,8 @@ from core.system_architecture import DesignSpace, PhysicsEngine, AIPredictor, In
 # Page Config
 st.set_page_config(page_title="HEA Cermet Lab", page_icon="🧪", layout="wide")
 
-# Custom CSS
-st.markdown("""
-<style>
-    .stApp { background-color: #f0f2f6; }
-    .main-header { font-size: 2rem; color: #4B4B4B; text-align: center; }
-    .stButton>button { color: white; background-color: #007bff; border-radius: 5px; }
-</style>
-""", unsafe_allow_html=True)
+import ui.style_manager as style_manager
+style_manager.apply_theme()
 
 # Initialization
 initialize_session_state()
@@ -42,7 +36,7 @@ with st.sidebar:
     st.info(t('hea_intro'))
 
 # Main Content
-st.markdown(f"<h1 class='main-header'>{t('header_hea')}</h1>", unsafe_allow_html=True)
+style_manager.ui_header(t('header_hea'))
 
 # Tabs
 tab_batch, tab_single, tab_inverse = st.tabs([t('mode_batch'), t('tab_single'), t('tab_inverse')])

@@ -1,0 +1,154 @@
+{
+  "timestamp": "2026-01-15T18:31:32.920862",
+  "model_type": "XGBoost (Optuna Optimized)",
+  "optimization_method": "Optuna TPESampler",
+  "n_trials": 20,
+  "penalty_factor": 0.5,
+  "sample_count": 2249,
+  "feature_count": 30,
+  "best_params": {
+    "n_estimators": 694,
+    "max_depth": 7,
+    "learning_rate": 0.017027342057518415,
+    "min_child_weight": 5,
+    "gamma": 0.4031106217171997,
+    "reg_alpha": 0.030190543403581013,
+    "reg_lambda": 0.40763577378551596,
+    "subsample": 0.8842756092515252,
+    "colsample_bytree": 0.8485068523262275,
+    "colsample_bylevel": 0.810712650921173
+  },
+  "cv_metrics": {
+    "r2": 0.815555460779551,
+    "mae": 108.09001956870154,
+    "rmse": 150.279437993953
+  },
+  "train_metrics": {
+    "r2": 0.901387644767867,
+    "mae": 76.80451076899357,
+    "rmse": 109.88002451369002
+  },
+  "overfitting_ratio": 1.1052438345594218,
+  "feature_importance": [
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData maximum AtomicWeight",
+      "importance": 0.14306111633777618
+    },
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData mode NUnfilled",
+      "importance": 0.11992613971233368
+    },
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData mode AtomicWeight",
+      "importance": 0.10190210491418839
+    },
+    {
+      "feature": "grain_size_um",
+      "importance": 0.0657271295785904
+    },
+    {
+      "feature": "ceramic_magpie_Ceramic_MagpieData MagpieData mean NpUnfilled",
+      "importance": 0.06125945597887039
+    },
+    {
+      "feature": "ceramic_magpie_Ceramic_MagpieData MagpieData mean Electronegativity",
+      "importance": 0.05335293337702751
+    },
+    {
+      "feature": "ceramic_magpie_Ceramic_MagpieData MagpieData mean Column",
+      "importance": 0.05179433152079582
+    },
+    {
+      "feature": "ceramic_magpie_Ceramic_MagpieData MagpieData range CovalentRadius",
+      "importance": 0.048779863864183426
+    },
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData mean NsUnfilled",
+      "importance": 0.04009062424302101
+    },
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData mean Column",
+      "importance": 0.03541506826877594
+    },
+    {
+      "feature": "binder_vol_pct",
+      "importance": 0.034250568598508835
+    },
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData maximum NdValence",
+      "importance": 0.030786359682679176
+    },
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData minimum Row",
+      "importance": 0.029354378581047058
+    },
+    {
+      "feature": "ceramic_magpie_Ceramic_MagpieData MagpieData avg_dev SpaceGroupNumber",
+      "importance": 0.027531225234270096
+    },
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData range NdValence",
+      "importance": 0.02712198719382286
+    },
+    {
+      "feature": "ceramic_magpie_Ceramic_MagpieData MagpieData mean NsValence",
+      "importance": 0.024059249088168144
+    },
+    {
+      "feature": "sinter_temp_c",
+      "importance": 0.02275456115603447
+    },
+    {
+      "feature": "pred_lattice_param",
+      "importance": 0.01928231120109558
+    },
+    {
+      "feature": "ceramic_magpie_Ceramic_MagpieData MagpieData mean GSbandgap",
+      "importance": 0.019133534282445908
+    },
+    {
+      "feature": "pred_formation_energy",
+      "importance": 0.018892910331487656
+    },
+    {
+      "feature": "pred_magnetic_moment",
+      "importance": 0.014184214174747467
+    },
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData minimum NfValence",
+      "importance": 0.003986061085015535
+    },
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData mode NsValence",
+      "importance": 0.0038538577500730753
+    },
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData avg_dev GSbandgap",
+      "importance": 0.0035000229254364967
+    },
+    {
+      "feature": "pred_bulk_modulus",
+      "importance": 0.0
+    },
+    {
+      "feature": "ceramic_vol_pct",
+      "importance": 0.0
+    },
+    {
+      "feature": "lattice_mismatch",
+      "importance": 0.0
+    },
+    {
+      "feature": "pred_shear_modulus",
+      "importance": 0.0
+    },
+    {
+      "feature": "binder_magpie_Binder_MagpieData MagpieData maximum NsValence",
+      "importance": 0.0
+    },
+    {
+      "feature": "ceramic_magpie_Ceramic_MagpieData MagpieData range NpUnfilled",
+      "importance": 0.0
+    }
+  ]
+}

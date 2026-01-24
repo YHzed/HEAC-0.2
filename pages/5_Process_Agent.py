@@ -11,7 +11,10 @@ from core import MaterialProcessor
 
 st.set_page_config(page_title="Data Processing Agent", layout="wide")
 
-st.title("🛠️ HEA Data Preprocessing Agent")
+import ui.style_manager as style_manager
+style_manager.apply_theme()
+
+style_manager.ui_header("🛠️ HEA Data Preprocessing Agent")
 
 # Suppress Streamlit threading warnings caused by Matminer/joblib
 import logging

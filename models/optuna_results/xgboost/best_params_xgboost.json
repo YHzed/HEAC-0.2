@@ -1,0 +1,28 @@
+{
+  "algorithm": "xgboost",
+  "best_params": {
+    "n_estimators": 694,
+    "max_depth": 7,
+    "learning_rate": 0.017027342057518415,
+    "min_child_weight": 5,
+    "gamma": 0.4031106217171997,
+    "reg_alpha": 0.030190543403581013,
+    "reg_lambda": 0.40763577378551596,
+    "subsample": 0.8842756092515252,
+    "colsample_bytree": 0.8485068523262275,
+    "colsample_bylevel": 0.810712650921173
+  },
+  "best_metrics": {
+    "final_loss": 169.53569902164983,
+    "rmse_val": 149.68812669158046,
+    "rmse_train": 109.99298203144171,
+    "overfit_gap": 39.69514466013875,
+    "overfit_ratio": 0.7348143400716932,
+    "r2_val": 0.8167692766931596
+  },
+  "optimization_config": {
+    "n_trials": 20,
+    "penalty_factor": 0.5
+  },
+  "timestamp": "2026-01-15T18:26:06.328491"
+}

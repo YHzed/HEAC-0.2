@@ -1,0 +1,372 @@
+/* HEAC 0.2 - Academic Professional Design System */
+/* Based on design-system/heac-0.2/MASTER.md */
+
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Crimson+Pro:wght@400;500;600;700&display=swap');
+
+/* ===== CSS Variables ===== */
+:root {
+  /* Colors */
+  --color-primary: #3B82F6;
+  --color-secondary: #60A5FA;
+  --color-cta: #F97316;
+  --color-background: #F8FAFC;
+  --color-text: #1E293B;
+  
+  /* Spacing */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4rem;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+  
+  /* Typography */
+  --font-heading: 'Crimson Pro', serif;
+  --font-body: 'Atkinson Hyperlegible', sans-serif;
+}
+
+/* ===== Global Typography ===== */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading) !important;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+body, p, li, span, div {
+  font-family: var(--font-body) !important;
+  color: var(--color-text);
+}
+
+/* ===== Streamlit Container Enhancements ===== */
+.stApp {
+  background-color: var(--color-background);
+}
+
+/* Card-style containers */
+div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] {
+  background: white;
+  border-radius: 12px;
+  padding: var(--space-lg);
+  margin-bottom: var(--space-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all 200ms ease;
+}
+
+div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"]:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+/* ===== Metrics Enhancement ===== */
+div[data-testid="stMetricValue"] {
+  font-family: var(--font-heading) !important;
+  font-size: 2rem !important;
+  font-weight: 600 !important;
+  color: var(--color-primary);
+}
+
+div[data-testid="stMetricLabel"] {
+  font-family: var(--font-body) !important;
+  font-size: 0.875rem !important;
+  font-weight: 400 !important;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+div[data-testid="stMetricDelta"] {
+  font-family: var(--font-body) !important;
+  font-size: 0.75rem !important;
+}
+
+/* ===== Buttons ===== */
+.stButton > button {
+  font-family: var(--font-body) !important;
+  background-color: var(--color-cta);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-weight: 600;
+  transition: all 200ms ease;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+
+.stButton > button:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.stButton > button:active {
+  transform: translateY(0);
+}
+
+/* Secondary button style */
+.stButton > button[kind="secondary"] {
+  background-color: transparent;
+  color: var(--color-primary);
+  border: 2px solid var(--color-primary);
+}
+
+.stButton > button[kind="secondary"]:hover {
+  background-color: rgba(59, 130, 246, 0.05);
+  opacity: 1;
+}
+
+/* ===== Inputs & Selects ===== */
+input, textarea, select {
+  font-family: var(--font-body) !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 8px !important;
+  padding: 12px 16px !important;
+  transition: border-color 200ms ease !important;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+  outline: none !important;
+}
+
+/* ===== Tabs ===== */
+.stTabs [data-baseweb="tab-list"] {
+  gap: var(--space-sm);
+  border-bottom: 2px solid #E2E8F0;
+}
+
+.stTabs [data-baseweb="tab"] {
+  font-family: var(--font-heading) !important;
+  font-weight: 500;
+  padding: var(--space-md) var(--space-lg);
+  border-radius: 8px 8px 0 0;
+  transition: all 200ms ease;
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+.stTabs [data-baseweb="tab"][aria-selected="true"] {
+  background-color: var(--color-primary);
+  color: white !important;
+}
+
+/* ===== Sidebar ===== */
+section[data-testid="stSidebar"] {
+  background-color: white !important;
+  border-right: 1px solid #E2E8F0;
+}
+
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3 {
+  font-family: var(--font-heading) !important;
+  color: var(--color-text);
+}
+
+/* ===== Expander ===== */
+.streamlit-expanderHeader {
+  font-family: var(--font-heading) !important;
+  font-weight: 600;
+  background-color: white;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: var(--space-md);
+  transition: all 200ms ease;
+  cursor: pointer;
+}
+
+.streamlit-expanderHeader:hover {
+  background-color: rgba(59, 130, 246, 0.05);
+  border-color: var(--color-primary);
+}
+
+/* ===== Tables ===== */
+table {
+  font-family: var(--font-body) !important;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+table thead th {
+  font-family: var(--font-heading) !important;
+  font-weight: 600;
+  background-color: #F1F5F9;
+  color: var(--color-text);
+  padding: var(--space-md);
+  border-bottom: 2px solid #E2E8F0;
+  text-align: left;
+}
+
+table tbody td {
+  padding: var(--space-md);
+  border-bottom: 1px solid #E2E8F0;
+}
+
+table tbody tr:hover {
+  background-color: rgba(59, 130, 246, 0.03);
+}
+
+/* ===== Alerts & Messages ===== */
+.stAlert {
+  font-family: var(--font-body) !important;
+  border-radius: 8px;
+  border-left: 4px solid;
+  padding: var(--space-md) var(--space-lg);
+  margin: var(--space-md) 0;
+}
+
+.stSuccess {
+  border-left-color: #10B981;
+  background-color: #ECFDF5;
+}
+
+.stInfo {
+  border-left-color: var(--color-primary);
+  background-color: #EFF6FF;
+}
+
+.stWarning {
+  border-left-color: #F59E0B;
+  background-color: #FFFBEB;
+}
+
+.stError {
+  border-left-color: #EF4444;
+  background-color: #FEF2F2;
+}
+
+/* ===== Progress Bar ===== */
+.stProgress > div > div {
+  background-color: var(--color-primary);
+  height: 8px;
+  border-radius: 4px;
+}
+
+/* ===== Spinner ===== */
+.stSpinner > div {
+  border-top-color: var(--color-primary) !important;
+}
+
+/* ===== Code Blocks ===== */
+code {
+  font-family: 'Roboto Mono', monospace !important;
+  background-color: #F1F5F9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.875em;
+}
+
+pre {
+  background-color: #F1F5F9;
+  padding: var(--space-md);
+  border-radius: 8px;
+  border-left: 4px solid var(--color-primary);
+  overflow-x: auto;
+}
+
+/* ===== Headers with Dividers ===== */
+hr {
+  border: none;
+  border-top: 2px solid #E2E8F0;
+  margin: var(--space-xl) 0;
+}
+
+/* ===== Accessibility ===== */
+/* Focus visible for keyboard navigation */
+*:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===== Responsive Design ===== */
+@media (max-width: 768px) {
+  :root {
+    --space-xl: 1.5rem;
+    --space-2xl: 2rem;
+    --space-3xl: 2.5rem;
+  }
+  
+  div[data-testid="stMetricValue"] {
+    font-size: 1.5rem !important;
+  }
+  
+  h1 {
+    font-size: 1.75rem !important;
+  }
+  
+  h2 {
+    font-size: 1.5rem !important;
+  }
+}
+
+/* ===== Container Borders (Academic Style) ===== */
+div[data-testid="stExpander"] {
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  margin-bottom: var(--space-md);
+  overflow: hidden;
+}
+
+/* ===== Professional Numbering & Lists ===== */
+ol, ul {
+  font-family: var(--font-body) !important;
+  line-height: 1.8;
+}
+
+ol li::marker {
+  font-family: var(--font-heading) !important;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+ul li::marker {
+  color: var(--color-primary);
+}
+
+/* ===== Links ===== */
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 200ms ease;
+  border-bottom: 1px solid transparent;
+}
+
+a:hover {
+  border-bottom-color: var(--color-primary);
+  opacity: 0.8;
+}
+
+/* ===== Badges & Tags ===== */
+.stTag {
+  font-family: var(--font-body) !important;
+  background-color: #EFF6FF;
+  color: var(--color-primary);
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-block;
+  margin: 2px;
+}

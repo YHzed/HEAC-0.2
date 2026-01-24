@@ -12,9 +12,38 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from core.virtual_screening import VirtualScreening, format_composition_string
 
+# ========== 性能优化: 模型资源缓存 ==========
+@st.cache_resource
+def load_screening_model(model_path: str):
+    """缓存虚拟筛选模型 - 避免重复加载"""
+    return VirtualScreening(model_path)
+
+@st.cache_data(ttl=300)  # 缓存5分钟
+def load_model_metadata(models_dir: Path) -> list:
+    """缓存模型元数据"""
+    import joblib
+    model_files = list(models_dir.glob("*.pkl"))
+    model_info = []
+    for model_file in model_files:
+        try:
+            model_pkg = joblib.load(model_file)
+            model_info.append({
+                'path': str(model_file),
+                'name': model_file.stem,
+                'target': model_pkg.get('target_name', 'Unknown'),
+                'cv_score': model_pkg.get('cv_score', None),
+                'n_features': len(model_pkg.get('feature_names', []))
+            })
+        except Exception as e:
+            pass  # 静默跳过无效模型
+    return model_info
+
 st.set_page_config(page_title="Virtual Screening", page_icon="🔬", layout="wide")
 
-st.title("🔬 Virtual High-Throughput Screening")
+import ui.style_manager as style_manager
+style_manager.apply_theme()
+
+style_manager.ui_header("🔬 Virtual High-Throughput Screening")
 st.markdown("""
 **工作流程**：
 1. 配置筛选参数（样本数、元素范围、工艺范围）
@@ -123,21 +152,8 @@ if not model_files:
     st.info("💡 请先在 'Model Training' 页面训练并保存模型")
     st.stop()
 
-# 读取模型信息
-model_info = []
-for model_file in model_files:
-    try:
-        import joblib
-        model_pkg = joblib.load(model_file)
-        model_info.append({
-            'path': model_file,
-            'name': model_file.stem,
-            'target': model_pkg.get('target_name', 'Unknown'),
-            'cv_score': model_pkg.get('cv_score', None),
-            'n_features': len(model_pkg.get('feature_names', []))
-        })
-    except Exception as e:
-        st.warning(f"无法读取模型 {model_file.name}: {e}")
+# 使用缓存加载模型元数据
+model_info = load_model_metadata(models_dir)
 
 if not model_info:
     st.error("无法加载任何模型")
@@ -184,9 +200,9 @@ with st.expander("📋 查看筛选配置", expanded=False):
 
 if st.button("🔬 开始虚拟筛选", type="primary"):
     try:
-        # 初始化虚拟筛选器
+        # 使用缓存加载模型
         with st.spinner("加载模型..."):
-            screener = VirtualScreening(str(selected_model_path))
+            screener = load_screening_model(str(selected_model_path))
         
         st.success(f"✓ 模型已加载: {screener.target_name}")
         
@@ -294,24 +310,38 @@ if 'top_candidates' in st.session_state:
         
         all_df = st.session_state.all_candidates
         
-        fig, ax = plt.subplots(figsize=(12, 6))
+        # ========== 使用Plotly替换Matplotlib (性能优化) ==========
+        import plotly.graph_objects as go
+        import plotly.express as px
         
-        # 绘制全部样本分布
-        ax.hist(all_df[f'Predicted_{screener.target_name}'], 
-                bins=50, alpha=0.6, label='All Candidates', color='skyblue', edgecolor='black')
+        # 创建直方图
+        fig = px.histogram(
+            all_df, 
+            x=f'Predicted_{screener.target_name}',
+            nbins=50,
+            title=f'Distribution of Predicted {screener.target_name}',
+            labels={f'Predicted_{screener.target_name}': screener.target_name},
+            color_discrete_sequence=['skyblue']
+        )
         
-        # 标记Top N
+        # 添加Top N阈值线
         top_values = top_df[f'Predicted_{screener.target_name}']
-        ax.axvline(top_values.min(), color='r', linestyle='--', linewidth=2, 
-                   label=f'Top {n_top} Threshold')
+        fig.add_vline(
+            x=top_values.min(), 
+            line_dash="dash", 
+            line_color="red",
+            annotation_text=f'Top {n_top} Threshold',
+            annotation_position="top"
+        )
         
-        ax.set_xlabel(f'{screener.target_name}', fontsize=12)
-        ax.set_ylabel('Frequency', fontsize=12)
-        ax.set_title(f'Distribution of Predicted {screener.target_name}', fontsize=14)
-        ax.legend()
-        ax.grid(True, alpha=0.3)
+        fig.update_layout(
+            xaxis_title=screener.target_name,
+            yaxis_title='Frequency',
+            hovermode='x unified',
+            template='plotly_white'
+        )
         
-        st.pyplot(fig)
+        st.plotly_chart(fig, use_container_width=True)
         
         # 统计信息
         col1, col2, col3, col4 = st.columns(4)
@@ -327,52 +357,101 @@ if 'top_candidates' in st.session_state:
     with tab2:
         st.subheader("Top配方参数分析")
         
-        fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+        # ========== 使用Plotly替换Matplotlib (性能优化) ==========
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
         
-        # 烧结温度
-        ax = axes[0, 0]
-        ax.scatter(top_df['Sinter_Temp_C'], top_df[f'Predicted_{screener.target_name}'], 
-                   s=100, alpha=0.6, c=range(len(top_df)), cmap='viridis')
-        ax.set_xlabel('Sintering Temperature (°C)')
-        ax.set_ylabel(f'Predicted {screener.target_name}')
-        ax.set_title('Temperature vs Performance')
-        ax.grid(True, alpha=0.3)
+        # 创建2x2子图
+        fig = make_subplots(
+            rows=2, cols=2,
+            subplot_titles=('Temperature vs Performance', 'Grain Size vs Performance', 
+                           'Binder Content vs Performance', 'Parameter Distributions'),
+            vertical_spacing=0.12,
+            horizontal_spacing=0.1
+        )
         
-        # 晶粒尺寸
-        ax = axes[0, 1]
-        ax.scatter(top_df['Grain_Size_um'], top_df[f'Predicted_{screener.target_name}'], 
-                   s=100, alpha=0.6, c=range(len(top_df)), cmap='viridis')
-        ax.set_xlabel('Grain Size (μm)')
-        ax.set_ylabel(f'Predicted {screener.target_name}')
-        ax.set_title('Grain Size vs Performance')
-        ax.grid(True, alpha=0.3)
+        # 散点图颜色映射
+        colors = px.colors.sequential.Viridis
+        color_scale = [colors[int(i/(len(top_df)-1) * (len(colors)-1))] for i in range(len(top_df))]
         
-        # 粘结相含量
-        ax = axes[1, 0]
-        ax.scatter(top_df['Binder_Wt_Pct'], top_df[f'Predicted_{screener.target_name}'], 
-                   s=100, alpha=0.6, c=range(len(top_df)), cmap='viridis')
-        ax.set_xlabel('Binder Content (wt%)')
-        ax.set_ylabel(f'Predicted {screener.target_name}')
-        ax.set_title('Binder Content vs Performance')
-        ax.grid(True, alpha=0.3)
+        # 1. 烧结温度 vs 性能
+        fig.add_trace(
+            go.Scatter(
+                x=top_df['Sinter_Temp_C'],
+                y=top_df[f'Predicted_{screener.target_name}'],
+                mode='markers',
+                marker=dict(size=12, color=color_scale, line=dict(width=1, color='white')),
+                text=[f"Rank {i+1}" for i in range(len(top_df))],
+                hovertemplate='Temp: %{x:.1f}°C<br>Performance: %{y:.2f}<extra></extra>',
+                showlegend=False
+            ),
+            row=1, col=1
+        )
         
-        # 参数分布（箱线图）
-        ax = axes[1, 1]
+        # 2. 晶粒尺寸 vs 性能
+        fig.add_trace(
+            go.Scatter(
+                x=top_df['Grain_Size_um'],
+                y=top_df[f'Predicted_{screener.target_name}'],
+                mode='markers',
+                marker=dict(size=12, color=color_scale, line=dict(width=1, color='white')),
+                text=[f"Rank {i+1}" for i in range(len(top_df))],
+                hovertemplate='Grain: %{x:.2f}μm<br>Performance: %{y:.2f}<extra></extra>',
+                showlegend=False
+            ),
+            row=1, col=2
+        )
+        
+        # 3. 粘结相含量 vs 性能
+        fig.add_trace(
+            go.Scatter(
+                x=top_df['Binder_Wt_Pct'],
+                y=top_df[f'Predicted_{screener.target_name}'],
+                mode='markers',
+                marker=dict(size=12, color=color_scale, line=dict(width=1, color='white')),
+                text=[f"Rank {i+1}" for i in range(len(top_df))],
+                hovertemplate='Binder: %{x:.2f}wt%<br>Performance: %{y:.2f}<extra></extra>',
+                showlegend=False
+            ),
+            row=2, col=1
+        )
+        
+        # 4. 参数分布箱形图
         params = ['Sinter_Temp_C', 'Grain_Size_um', 'Binder_Wt_Pct']
-        normalized_data = []
-        for param in params:
-            # 归一化到0-1
+        param_labels = ['Temp', 'Grain', 'Binder']
+        
+        for param, label in zip(params, param_labels):
             values = top_df[param].values
             norm_values = (values - values.min()) / (values.max() - values.min() + 1e-10)
-            normalized_data.append(norm_values)
+            
+            fig.add_trace(
+                go.Box(
+                    y=norm_values,
+                    name=label,
+                    boxmean='sd',
+                    marker_color='lightblue'
+                ),
+                row=2, col=2
+            )
         
-        ax.boxplot(normalized_data, labels=['Temp', 'Grain', 'Binder'])
-        ax.set_ylabel('Normalized Value (0-1)')
-        ax.set_title('Parameter Distributions (Top Candidates)')
-        ax.grid(True, alpha=0.3)
+        # 更新布局
+        fig.update_xaxes(title_text="Temperature (°C)", row=1, col=1)
+        fig.update_xaxes(title_text="Grain Size (μm)", row=1, col=2)
+        fig.update_xaxes(title_text="Binder Content (wt%)", row=2, col=1)
         
-        plt.tight_layout()
-        st.pyplot(fig)
+        fig.update_yaxes(title_text=screener.target_name, row=1, col=1)
+        fig.update_yaxes(title_text=screener.target_name, row=1, col=2)
+        fig.update_yaxes(title_text=screener.target_name, row=2, col=1)
+        fig.update_yaxes(title_text="Normalized Value (0-1)", row=2, col=2)
+        
+        fig.update_layout(
+            height=800,
+            showlegend=True,
+            template='plotly_white',
+            hovermode='closest'
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
     
     with tab3:
         st.subheader("粘结相成分空间")
